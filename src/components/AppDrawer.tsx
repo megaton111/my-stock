@@ -5,8 +5,9 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import SavingsIcon from '@mui/icons-material/Savings';
-import SettingsIcon from '@mui/icons-material/Settings';
+import LogoutIcon from '@mui/icons-material/Logout';
 import { useRouter, usePathname } from 'next/navigation';
+import { useUser } from '@/hooks/useUser';
 
 const MENU_ITEMS = [
   { label: '대시보드', path: '/', icon: <DashboardIcon fontSize="small" /> },
@@ -24,6 +25,7 @@ interface AppDrawerProps {
 export default function AppDrawer({ open, onClose }: AppDrawerProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { signOut } = useUser();
 
   const handleNavigate = (path: string) => {
     onClose();
@@ -51,6 +53,17 @@ export default function AppDrawer({ open, onClose }: AppDrawerProps) {
               </ListItemButton>
             </ListItem>
           ))}
+          <ListItem disablePadding sx={{ mt: 2, borderTop: '1px solid', borderColor: 'gray2', pt: 2 }}>
+            <ListItemButton
+              onClick={() => { onClose(); signOut(); }}
+              sx={{ borderRadius: 1, color: 'gray6' }}
+            >
+              <ListItemIcon sx={{ minWidth: 36, color: 'inherit' }}>
+                <LogoutIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="로그아웃" />
+            </ListItemButton>
+          </ListItem>
         </List>
       </Box>
     </Drawer>
