@@ -1,19 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '@/lib/db';
-import { RowDataPacket, ResultSetHeader } from 'mysql2';
+import supabase from '@/lib/supabase';
 
-interface InvestmentRow extends RowDataPacket {
-  id: number;
-  user_id: number;
-  name: string;
-  ticker: string;
-  category: string;
-  quantity: number;
-  avg_price: number;
-  currency: 'USD' | 'KRW';
-}
-
-function toInvestment(row: InvestmentRow) {
+function toInvestment(row: Record<string, unknown>) {
   return {
     id: String(row.id),
     name: row.name,
@@ -33,12 +21,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'userId가 필요합니다.' }, { status: 400 });
   }
 
-  const [rows] = await pool.query<InvestmentRow[]>(
-    'SELECT * FROM investments WHERE user_id = ? ORDER BY id',
-    [userId],
-  );
+  const { data, error } = await supabase
+    .from('investments')
+    .select('*')
+    .eq('user_id', userId)
+    .order('id');
 
-  return NextResponse.json(rows.map(toInvestment));
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json((data ?? []).map(toInvestment));
 }
 
 // 새 종목 추가
@@ -49,18 +42,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '필수 항목이 누락되었습니다.' }, { status: 400 });
   }
 
-  const [result] = await pool.query<ResultSetHeader>(
-    'INSERT INTO investments (user_id, name, ticker, category, quantity, avg_price, currency) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [body.userId, body.name, body.ticker, body.category || '미국주식', body.quantity, body.avgPrice, body.currency],
-  );
+  const { data, error } = await supabase
+    .from('investments')
+    .insert({
+      user_id: body.userId,
+      name: body.name,
+      ticker: body.ticker,
+      category: body.category || '미국주식',
+      quantity: body.quantity,
+      avg_price: body.avgPrice,
+      currency: body.currency,
+    })
+    .select()
+    .single();
 
-  return NextResponse.json({
-    id: String(result.insertId),
-    name: body.name,
-    ticker: body.ticker,
-    category: body.category || '미국주식',
-    quantity: body.quantity,
-    avgPrice: body.avgPrice,
-    currency: body.currency,
-  }, { status: 201 });
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json(toInvestment(data), { status: 201 });
 }

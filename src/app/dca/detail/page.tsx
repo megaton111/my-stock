@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Container, Typography, Box, Stack, IconButton, Button, TextField,
@@ -101,7 +101,7 @@ function computeEditPreview(entries: DcaEntry[], draft: EditDraft) {
   return rows.find((r) => r.id === draft.id) ?? null;
 }
 
-export default function DcaDetailPage() {
+function DcaDetailContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user } = useUser();
@@ -854,5 +854,13 @@ export default function DcaDetailPage() {
         </Alert>
       </Snackbar>
     </Container>
+  );
+}
+
+export default function DcaDetailPage() {
+  return (
+    <Suspense>
+      <DcaDetailContent />
+    </Suspense>
   );
 }

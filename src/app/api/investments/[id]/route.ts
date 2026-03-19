@@ -1,18 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '@/lib/db';
-import { RowDataPacket, ResultSetHeader } from 'mysql2';
+import supabase from '@/lib/supabase';
 
-interface InvestmentRow extends RowDataPacket {
-  id: number;
-  name: string;
-  ticker: string;
-  category: string;
-  quantity: number;
-  avg_price: number;
-  currency: 'USD' | 'KRW';
-}
-
-function toInvestment(row: InvestmentRow) {
+function toInvestment(row: Record<string, unknown>) {
   return {
     id: String(row.id),
     name: row.name,
@@ -30,13 +19,18 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const [rows] = await pool.query<InvestmentRow[]>('SELECT * FROM investments WHERE id = ?', [id]);
 
-  if (rows.length === 0) {
+  const { data, error } = await supabase
+    .from('investments')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error || !data) {
     return NextResponse.json({ error: '종목을 찾을 수 없습니다.' }, { status: 404 });
   }
 
-  return NextResponse.json(toInvestment(rows[0]));
+  return NextResponse.json(toInvestment(data));
 }
 
 // 종목 수정
@@ -47,32 +41,30 @@ export async function PUT(
   const { id } = await params;
   const body = await request.json();
 
-  const fields: string[] = [];
-  const values: (string | number)[] = [];
+  const updates: Record<string, unknown> = {};
+  if (body.name !== undefined) updates.name = body.name;
+  if (body.ticker !== undefined) updates.ticker = body.ticker;
+  if (body.category !== undefined) updates.category = body.category;
+  if (body.quantity !== undefined) updates.quantity = body.quantity;
+  if (body.avgPrice !== undefined) updates.avg_price = body.avgPrice;
+  if (body.currency !== undefined) updates.currency = body.currency;
 
-  if (body.name !== undefined) { fields.push('name = ?'); values.push(body.name); }
-  if (body.ticker !== undefined) { fields.push('ticker = ?'); values.push(body.ticker); }
-  if (body.category !== undefined) { fields.push('category = ?'); values.push(body.category); }
-  if (body.quantity !== undefined) { fields.push('quantity = ?'); values.push(body.quantity); }
-  if (body.avgPrice !== undefined) { fields.push('avg_price = ?'); values.push(body.avgPrice); }
-  if (body.currency !== undefined) { fields.push('currency = ?'); values.push(body.currency); }
-
-  if (fields.length === 0) {
+  if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: '수정할 항목이 없습니다.' }, { status: 400 });
   }
 
-  values.push(Number(id));
-  const [result] = await pool.query<ResultSetHeader>(
-    `UPDATE investments SET ${fields.join(', ')} WHERE id = ?`,
-    values,
-  );
+  const { data, error } = await supabase
+    .from('investments')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
 
-  if (result.affectedRows === 0) {
+  if (error || !data) {
     return NextResponse.json({ error: '종목을 찾을 수 없습니다.' }, { status: 404 });
   }
 
-  const [rows] = await pool.query<InvestmentRow[]>('SELECT * FROM investments WHERE id = ?', [id]);
-  return NextResponse.json(toInvestment(rows[0]));
+  return NextResponse.json(toInvestment(data));
 }
 
 // 종목 삭제
@@ -81,9 +73,19 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const [result] = await pool.query<ResultSetHeader>('DELETE FROM investments WHERE id = ?', [id]);
 
-  if (result.affectedRows === 0) {
+  const { error } = await supabase
+    .from('dca_entries')
+    .delete()
+    .eq('id', id);
+
+  // investments 테이블에서도 삭제
+  const { error: invError } = await supabase
+    .from('investments')
+    .delete()
+    .eq('id', id);
+
+  if (invError) {
     return NextResponse.json({ error: '종목을 찾을 수 없습니다.' }, { status: 404 });
   }
 

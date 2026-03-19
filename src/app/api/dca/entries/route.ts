@@ -1,19 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '@/lib/db';
-import { RowDataPacket, ResultSetHeader } from 'mysql2';
+import supabase from '@/lib/supabase';
 
-interface DcaEntryRow extends RowDataPacket {
-  id: number;
-  user_id: number;
-  stock_name: string;
-  ticker: string;
-  target_quantity: number;
-  purchase_date: string;
-  amount: number;
-  quantity: number;
-}
-
-function toEntry(row: DcaEntryRow) {
+function toEntry(row: Record<string, unknown>) {
   return {
     id: String(row.id),
     stockName: row.stock_name,
@@ -35,15 +23,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'userId와 ticker가 필요합니다.' }, { status: 400 });
   }
 
-  const [rows] = await pool.query<DcaEntryRow[]>(
-    `SELECT id, user_id, stock_name, ticker, target_quantity,
-            DATE_FORMAT(purchase_date, '%Y-%m-%d') AS purchase_date,
-            amount, quantity
-     FROM dca_entries WHERE user_id = ? AND ticker = ? ORDER BY purchase_date ASC`,
-    [userId, ticker],
-  );
+  const { data, error } = await supabase
+    .from('dca_entries')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('ticker', ticker)
+    .order('purchase_date', { ascending: true });
 
-  return NextResponse.json(rows.map(toEntry));
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json((data ?? []).map(toEntry));
 }
 
 // POST /api/dca/entries → 매수 기록 추가
@@ -55,19 +46,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '필수 항목이 누락되었습니다.' }, { status: 400 });
   }
 
-  const [result] = await pool.query<ResultSetHeader>(
-    `INSERT INTO dca_entries (user_id, stock_name, ticker, target_quantity, purchase_date, amount, quantity)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [userId, stockName, ticker, targetQuantity || 0, date, amount, quantity],
-  );
+  const { data, error } = await supabase
+    .from('dca_entries')
+    .insert({
+      user_id: userId,
+      stock_name: stockName,
+      ticker,
+      target_quantity: targetQuantity || 0,
+      purchase_date: date,
+      amount,
+      quantity,
+    })
+    .select()
+    .single();
 
-  return NextResponse.json({
-    id: String(result.insertId),
-    stockName,
-    ticker,
-    targetQuantity: targetQuantity || 0,
-    date,
-    amount,
-    quantity,
-  }, { status: 201 });
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json(toEntry(data), { status: 201 });
 }

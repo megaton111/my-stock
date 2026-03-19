@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '@/lib/db';
-import { RowDataPacket, ResultSetHeader } from 'mysql2';
-
-interface UserRow extends RowDataPacket {
-  id: number;
-  email: string;
-}
+import supabase from '@/lib/supabase';
 
 // 이메일로 사용자 조회 또는 생성
 export async function POST(request: NextRequest) {
@@ -16,17 +10,26 @@ export async function POST(request: NextRequest) {
   }
 
   // 기존 사용자 조회
-  const [rows] = await pool.query<UserRow[]>('SELECT * FROM users WHERE email = ?', [email]);
+  const { data: existing } = await supabase
+    .from('users')
+    .select('*')
+    .eq('email', email)
+    .single();
 
-  if (rows.length > 0) {
-    return NextResponse.json({ id: String(rows[0].id), email: rows[0].email });
+  if (existing) {
+    return NextResponse.json({ id: String(existing.id), email: existing.email });
   }
 
   // 없으면 새로 생성
-  const [result] = await pool.query<ResultSetHeader>(
-    'INSERT INTO users (email) VALUES (?)',
-    [email],
-  );
+  const { data: created, error } = await supabase
+    .from('users')
+    .insert({ email })
+    .select()
+    .single();
 
-  return NextResponse.json({ id: String(result.insertId), email }, { status: 201 });
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ id: String(created.id), email: created.email }, { status: 201 });
 }
