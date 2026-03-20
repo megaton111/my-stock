@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
 import supabase from '@/lib/supabase';
+import { encryptEmail, hashEmail } from '@/lib/crypto';
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -11,17 +12,22 @@ export async function GET(request: Request) {
     const { data, error } = await supabaseAuth.auth.exchangeCodeForSession(code);
 
     if (!error && data.user) {
-      // Supabase Auth 사용자의 이메일로 우리 users 테이블에서 조회/생성
       const email = data.user.email;
       if (email) {
+        const hash = hashEmail(email);
+
+        // email_hash로 기존 사용자 조회
         const { data: existing } = await supabase
           .from('users')
           .select('*')
-          .eq('email', email)
+          .eq('email_hash', hash)
           .single();
 
         if (!existing) {
-          await supabase.from('users').insert({ email });
+          await supabase.from('users').insert({
+            email: encryptEmail(email),
+            email_hash: hash,
+          });
         }
       }
 
