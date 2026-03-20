@@ -4,7 +4,16 @@ import { encryptEmail, hashEmail } from '@/lib/crypto';
 
 // 기존 평문 이메일을 암호화된 형태로 마이그레이션
 // 한 번만 실행하면 됩니다
+// GET으로도 호출 가능 (브라우저에서 접속 가능하도록)
+export async function GET() {
+  return migrate();
+}
+
 export async function POST() {
+  return migrate();
+}
+
+async function migrate() {
   const { data: users, error } = await supabase
     .from('users')
     .select('*')
