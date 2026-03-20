@@ -17,6 +17,11 @@ export function useStockPrices(investments: Investment[]): StockPricesState {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (investments.length === 0) {
+      setLoading(false);
+      return;
+    }
+
     const symbols = [
       ...investments.map(item => item.ticker),
       EXCHANGE_RATE_SYMBOL,

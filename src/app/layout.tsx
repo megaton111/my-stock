@@ -4,7 +4,7 @@ import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
 import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import theme from '@/styles/theme';
-import "./globals.css";
+import "@/styles/global.scss";
 
 const inter = Inter({
   subsets: ["latin"],
