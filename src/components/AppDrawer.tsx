@@ -36,10 +36,17 @@ export default function AppDrawer({ open, onClose }: AppDrawerProps) {
   const handleDeleteAccount = async () => {
     if (!user) return;
     try {
+      // 현재 세션에서 provider 정보와 토큰 가져오기
+      const supabase = (await import('@/lib/supabase-browser')).createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const provider = session?.user?.app_metadata?.provider;
+      const providerToken = session?.provider_token;
+      const providerRefreshToken = session?.provider_refresh_token;
+
       await fetch('/api/users/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id }),
+        body: JSON.stringify({ userId: user.id, provider, providerToken, providerRefreshToken }),
       });
       await signOut();
     } catch (err) {
