@@ -39,8 +39,8 @@ function LoginContent() {
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
         queryParams: provider === 'google'
-          ? { prompt: 'select_account' }
-          : { prompt: 'login' },
+          ? { prompt: 'select_account', scope: 'email' }
+          : { prompt: 'login', scope: 'account_email' },
       },
     });
   };
