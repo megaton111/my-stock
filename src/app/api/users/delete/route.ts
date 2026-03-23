@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
   }
 
   // 2. 관련 데이터 삭제 (FK 순서)
+  await supabase.from('collect_entries').delete().eq('user_id', userId);
   await supabase.from('dca_entries').delete().eq('user_id', userId);
   await supabase.from('investments').delete().eq('user_id', userId);
   await supabase.from('users').delete().eq('id', userId);

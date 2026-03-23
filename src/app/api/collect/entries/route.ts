@@ -10,13 +10,10 @@ function toEntry(row: Record<string, unknown>) {
     date: row.purchase_date,
     amount: Number(row.amount),
     quantity: Number(row.quantity),
-    scheduleType: row.schedule_type ?? null,
-    scheduleValue: row.schedule_value != null ? Number(row.schedule_value) : null,
-    scheduleQuantity: row.schedule_quantity != null ? Number(row.schedule_quantity) : null,
   };
 }
 
-// GET /api/dca/entries?userId=X&ticker=Y → 특정 종목의 매수 기록
+// GET /api/collect/entries?userId=X&ticker=Y → 특정 종목의 매수 기록
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const userId = searchParams.get('userId');
@@ -27,7 +24,7 @@ export async function GET(request: NextRequest) {
   }
 
   const { data, error } = await supabase
-    .from('dca_entries')
+    .from('collect_entries')
     .select('*')
     .eq('user_id', userId)
     .eq('ticker', ticker)
@@ -40,17 +37,17 @@ export async function GET(request: NextRequest) {
   return NextResponse.json((data ?? []).map(toEntry));
 }
 
-// POST /api/dca/entries → 매수 기록 추가
+// POST /api/collect/entries → 매수 기록 추가
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { userId, stockName, ticker, targetQuantity, date, amount, quantity, scheduleType, scheduleValue, scheduleQuantity } = body;
+  const { userId, stockName, ticker, targetQuantity, date, amount, quantity } = body;
 
   if (!userId || !stockName || !ticker || !date || amount == null || quantity == null) {
     return NextResponse.json({ error: '필수 항목이 누락되었습니다.' }, { status: 400 });
   }
 
   const { data, error } = await supabase
-    .from('dca_entries')
+    .from('collect_entries')
     .insert({
       user_id: userId,
       stock_name: stockName,
@@ -59,9 +56,6 @@ export async function POST(request: NextRequest) {
       purchase_date: date,
       amount,
       quantity,
-      schedule_type: scheduleType || null,
-      schedule_value: scheduleValue ?? null,
-      schedule_quantity: scheduleQuantity ?? null,
     })
     .select()
     .single();

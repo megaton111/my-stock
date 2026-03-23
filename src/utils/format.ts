@@ -3,10 +3,11 @@
  * USD → "$1,234", KRW → "1,234원"
  */
 export function formatCurrency(amount: number, currency: 'USD' | 'KRW'): string {
+  const value = Number(amount) || 0;
   if (currency === 'USD') {
-    return `$${amount.toLocaleString()}`;
+    return `$${value.toLocaleString()}`;
   }
-  return `${Math.floor(amount).toLocaleString()}원`;
+  return `${Math.floor(value).toLocaleString()}원`;
 }
 
 /**

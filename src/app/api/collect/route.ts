@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import supabase from '@/lib/supabase';
 
-// GET /api/dca?userId=X → 종목별 카드 목록
+// GET /api/collect?userId=X → 종목별 카드 목록
 export async function GET(request: NextRequest) {
   const userId = request.nextUrl.searchParams.get('userId');
 
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Supabase RPC로 GROUP BY 집계 수행
-  const { data, error } = await supabase.rpc('get_dca_summary', {
+  const { data, error } = await supabase.rpc('get_collect_summary', {
     p_user_id: Number(userId),
   });
 
@@ -25,14 +25,11 @@ export async function GET(request: NextRequest) {
       targetQuantity: Number(r.target_quantity),
       currentQuantity: Number(r.current_quantity),
       entryCount: Number(r.entry_count),
-      scheduleType: r.schedule_type ?? null,
-      scheduleValue: r.schedule_value != null ? Number(r.schedule_value) : null,
-      scheduleQuantity: r.schedule_quantity != null ? Number(r.schedule_quantity) : null,
     })),
   );
 }
 
-// DELETE /api/dca?userId=X&ticker=Y → 특정 종목의 모든 매수 기록 삭제
+// DELETE /api/collect?userId=X&ticker=Y → 특정 종목의 모든 매수 기록 삭제
 export async function DELETE(request: NextRequest) {
   const userId = request.nextUrl.searchParams.get('userId');
   const ticker = request.nextUrl.searchParams.get('ticker');
@@ -42,7 +39,7 @@ export async function DELETE(request: NextRequest) {
   }
 
   const { error } = await supabase
-    .from('dca_entries')
+    .from('collect_entries')
     .delete()
     .eq('user_id', userId)
     .eq('ticker', ticker);

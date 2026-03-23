@@ -9,27 +9,12 @@ import AddIcon from '@mui/icons-material/Add';
 import PageHeader from '@/components/PageHeader';
 import { useUser } from '@/hooks/useUser';
 
-interface DcaStock {
+interface CollectStock {
   stockName: string;
   ticker: string;
   targetQuantity: number;
   currentQuantity: number;
   entryCount: number;
-  scheduleType: 'weekly' | 'monthly' | null;
-  scheduleValue: number | null;
-  scheduleQuantity: number | null;
-}
-
-const DAY_LABELS = ['', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
-
-function formatSchedule(type: string | null, value: number | null, qty?: number | null): string | null {
-  if (!type || value == null) return null;
-  let label = '';
-  if (type === 'weekly') label = `매주 ${DAY_LABELS[value] || ''}`;
-  else if (type === 'monthly') label = `매달 ${value}일`;
-  else return null;
-  if (qty) label += ` · ${qty}주`;
-  return label;
 }
 
 function getProgressPercent(current: number, target: number) {
@@ -37,20 +22,21 @@ function getProgressPercent(current: number, target: number) {
   return Math.min(Math.round((current / target) * 100), 100);
 }
 
-export default function DcaPage() {
+export default function CollectPage() {
   const router = useRouter();
   const { user } = useUser();
-  const [stocks, setStocks] = useState<DcaStock[]>([]);
+  const [stocks, setStocks] = useState<CollectStock[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchStocks = useCallback(async () => {
     if (!user) return;
     try {
-      const res = await fetch(`/api/dca?userId=${user.id}`);
+      const res = await fetch(`/api/collect?userId=${user.id}`);
       const data = await res.json();
+      console.log({ data })
       setStocks(data);
     } catch (err) {
-      console.error('Failed to fetch DCA stocks:', err);
+      console.error('Failed to fetch collect stocks:', err);
     } finally {
       setLoading(false);
     }
@@ -66,7 +52,7 @@ export default function DcaPage() {
 
       <Stack spacing={3} sx={{ alignItems: 'center' }}>
         <Box sx={{ width: '100%' }}>
-          <Typography variant="h5" fontWeight={700}>적립식 매수 일지</Typography>
+          <Typography variant="h5" fontWeight={700}>주식 모으기</Typography>
           <Typography variant="body2" color="gray5" sx={{ mt: 0.5 }}>
             카드를 클릭하여 매수 일지를 작성하세요
           </Typography>
@@ -90,7 +76,7 @@ export default function DcaPage() {
               return (
                 <Paper
                   key={stock.ticker}
-                  onClick={() => router.push(`/dca/detail?ticker=${stock.ticker}`)}
+                  onClick={() => router.push(`/collect/detail?ticker=${stock.ticker}`)}
                   sx={{
                     p: 3,
                     border: '1px solid',
@@ -108,17 +94,6 @@ export default function DcaPage() {
                   <Stack spacing={1.5}>
                     <Typography fontSize={30} fontWeight={600}>{stock.stockName}</Typography>
                     <Stack direction="column" spacing={0.5}>
-                      {(() => {
-                        const schedule = formatSchedule(stock.scheduleType, stock.scheduleValue, stock.scheduleQuantity);
-                        return schedule ? (
-                          <Stack direction="row" alignItems="center">
-                            <Typography variant="body1" flex={1} fontSize="18px">투자날짜</Typography>
-                            <Typography variant="body1" flex={1} fontSize="18px" textAlign="right" color="primary.main" fontWeight={600}>
-                              {schedule}
-                            </Typography>
-                          </Stack>
-                        ) : null;
-                      })()}
                       <Stack direction="row" alignItems="center">
                         <Typography variant="body1" flex={1} fontSize="18px">목표수량</Typography>
                         <Typography variant="body1" flex={1} fontSize="18px" textAlign="right">
@@ -154,9 +129,9 @@ export default function DcaPage() {
               );
             })}
 
-            {/* 신규 적립식 매수 등록 카드 */}
+            {/* 신규 주식 모으기 등록 카드 */}
             <Paper
-              onClick={() => router.push('/dca/detail')}
+              onClick={() => router.push('/collect/detail')}
               sx={{
                 p: 3,
                 border: '2px dashed',
@@ -194,7 +169,7 @@ export default function DcaPage() {
                 신규 등록
               </Typography>
               <Typography fontSize={13} color="gray5" sx={{ mt: 0.5 }}>
-                새 적립식 매수 일지 만들기
+                새 주식 모으기 일지 만들기
               </Typography>
             </Paper>
           </Box>

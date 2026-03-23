@@ -17,6 +17,14 @@ import { useStockPrices } from '@/hooks/useStockPrices';
 import { formatCurrency } from '@/utils/format';
 import PageHeader from '@/components/PageHeader';
 import InvestmentFormDialog from '@/components/InvestmentFormDialog';
+import { useRouter } from 'next/navigation';
+
+/** collect-* / dca-* 접두사 ID로 병합 항목 여부를 판별 */
+function isMergedEntry(id: string): false | 'collect' | 'dca' {
+  if (id.startsWith('collect-')) return 'collect';
+  if (id.startsWith('dca-')) return 'dca';
+  return false;
+}
 
 const headerCellSx = { color: 'gray7', fontWeight: 600 } as const;
 
@@ -63,11 +71,13 @@ function compare(a: Investment, b: Investment, key: SortKey, exchangeRate: numbe
 }
 
 export default function InvestmentsPage() {
+  const router = useRouter();
   const { investments, loading, userId, refetch } = useInvestments();
   const { exchangeRate } = useStockPrices(investments);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Investment | null>(null);
   const [deleting, setDeleting] = useState<Investment | null>(null);
+  const [redirectTarget, setRedirectTarget] = useState<{ name: string; source: 'collect' | 'dca' } | null>(null);
 
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDirection>('asc');
@@ -197,14 +207,30 @@ export default function InvestmentsPage() {
                     </TableCell>
                     <TableCell>{item.currency}</TableCell>
                     <TableCell align="center">
-                      <Stack direction="row" spacing={0.5} justifyContent="center">
-                        <IconButton size="small" onClick={() => openEdit(item)} sx={{ color: 'gray6' }}>
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton size="small" onClick={() => setDeleting(item)} sx={{ color: 'gray6' }}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Stack>
+                      {(() => {
+                        const source = isMergedEntry(item.id);
+                        if (source) {
+                          return (
+                            <IconButton
+                              size="small"
+                              onClick={() => setRedirectTarget({ name: item.name, source })}
+                              sx={{ color: 'gray6' }}
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          );
+                        }
+                        return (
+                          <Stack direction="row" spacing={0.5} justifyContent="center">
+                            <IconButton size="small" onClick={() => openEdit(item)} sx={{ color: 'gray6' }}>
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton size="small" onClick={() => setDeleting(item)} sx={{ color: 'gray6' }}>
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Stack>
+                        );
+                      })()}
                     </TableCell>
                   </TableRow>
                 ))
@@ -224,6 +250,30 @@ export default function InvestmentsPage() {
         <DialogActions>
           <Button onClick={() => setDeleting(null)}>취소</Button>
           <Button onClick={handleDelete} color="error" variant="contained">삭제</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={!!redirectTarget} onClose={() => setRedirectTarget(null)}>
+        <DialogTitle>수정 안내</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            <strong>{redirectTarget?.name}</strong> 종목은{' '}
+            {redirectTarget?.source === 'collect' ? '주식 모으기' : '적립식 매수'} 항목입니다.
+            해당 화면에서 수정할 수 있습니다.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRedirectTarget(null)}>닫기</Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              const path = redirectTarget?.source === 'collect' ? '/collect' : '/dca';
+              setRedirectTarget(null);
+              router.push(path);
+            }}
+          >
+            이동하기
+          </Button>
         </DialogActions>
       </Dialog>
 

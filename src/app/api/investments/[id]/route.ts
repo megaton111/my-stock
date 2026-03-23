@@ -75,6 +75,11 @@ export async function DELETE(
   const { id } = await params;
 
   const { error } = await supabase
+    .from('collect_entries')
+    .delete()
+    .eq('id', id);
+
+  await supabase
     .from('dca_entries')
     .delete()
     .eq('id', id);

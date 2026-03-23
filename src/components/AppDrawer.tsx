@@ -9,6 +9,7 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import SavingsIcon from '@mui/icons-material/Savings';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
 import { useRouter, usePathname } from 'next/navigation';
@@ -17,7 +18,8 @@ import { useUser } from '@/hooks/useUser';
 const MENU_ITEMS = [
   { label: '대시보드', path: '/', icon: <DashboardIcon fontSize="small" /> },
   { label: '투자 내역', path: '/investments', icon: <ListAltIcon fontSize="small" /> },
-  { label: '적립식 매수', path: '/dca', icon: <SavingsIcon fontSize="small" /> },
+  { label: '주식 모으기', path: '/collect', icon: <SavingsIcon fontSize="small" /> },
+  { label: '적립식 매수', path: '/dca', icon: <CalendarMonthIcon fontSize="small" /> },
   { label: '주식정보', path: '/market', icon: <ShowChartIcon fontSize="small" /> },
   // { label: '설정', path: '/settings', icon: <SettingsIcon fontSize="small" /> },
 ];

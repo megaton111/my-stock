@@ -22,14 +22,14 @@ import {
 import { useUser } from '@/hooks/useUser';
 import { formatCurrency, formatRate, profitColor } from '@/utils/format';
 
-interface DcaEntry {
+interface CollectEntry {
   id: string;
   date: string;
   amount: number;
   quantity: number;
 }
 
-interface DcaRow extends DcaEntry {
+interface CollectRow extends CollectEntry {
   price: number;
   cumAmount: number;
   cumQuantity: number;
@@ -55,18 +55,6 @@ function getCategoryConfig(category: string) {
   return CATEGORIES.find((c) => c.value === category) || CATEGORIES[0];
 }
 
-const DAY_LABELS = ['', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
-
-function formatSchedule(type: string | null, value: number | null, qty?: number | null): string | null {
-  if (!type || value == null) return null;
-  let label = '';
-  if (type === 'weekly') label = `매주 ${DAY_LABELS[value] || ''}`;
-  else if (type === 'monthly') label = `매달 ${value}일`;
-  else return null;
-  if (qty) label += ` · ${qty}주`;
-  return label;
-}
-
 const headerCellSx = { color: 'gray7', fontWeight: 600, whiteSpace: 'nowrap' } as const;
 
 const COLUMNS = [
@@ -79,7 +67,7 @@ const COLUMNS = [
   { label: '누적평단가', align: 'right' as const },
 ];
 
-function computeRows(entries: DcaEntry[]): DcaRow[] {
+function computeRows(entries: CollectEntry[]): CollectRow[] {
   const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
   let cumAmount = 0;
   let cumQuantity = 0;
@@ -101,7 +89,7 @@ function getToday(): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-function computeEditPreview(entries: DcaEntry[], draft: EditDraft) {
+function computeEditPreview(entries: CollectEntry[], draft: EditDraft) {
   const amount = Number(draft.amount) || 0;
   const quantity = Number(draft.quantity) || 0;
   if (!amount || !quantity) return null;
@@ -113,7 +101,7 @@ function computeEditPreview(entries: DcaEntry[], draft: EditDraft) {
   return rows.find((r) => r.id === draft.id) ?? null;
 }
 
-function DcaDetailContent() {
+function CollectDetailContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user } = useUser();
@@ -125,9 +113,6 @@ function DcaDetailContent() {
   const [stockTicker, setStockTicker] = useState('');
   const [stockCategory, setStockCategory] = useState('미국주식');
   const [targetQuantity, setTargetQuantity] = useState('');
-  const [scheduleType, setScheduleType] = useState<'weekly' | 'monthly'>('weekly');
-  const [scheduleValue, setScheduleValue] = useState<number>(1);
-  const [scheduleQuantity, setScheduleQuantity] = useState('');
   const [registered, setRegistered] = useState(false);
 
   const catConfig = getCategoryConfig(stockCategory);
@@ -138,9 +123,6 @@ function DcaDetailContent() {
   // 기존 종목 접근 시 DB에서 가져온 종목 정보
   const [fetchedStockName, setFetchedStockName] = useState('');
   const [fetchedTargetQuantity, setFetchedTargetQuantity] = useState(0);
-  const [fetchedScheduleType, setFetchedScheduleType] = useState<string | null>(null);
-  const [fetchedScheduleValue, setFetchedScheduleValue] = useState<number | null>(null);
-  const [fetchedScheduleQuantity, setFetchedScheduleQuantity] = useState<number | null>(null);
 
   // 통화 판별: 티커 suffix 기반
   const currency: 'USD' | 'KRW' = useMemo(() => {
@@ -149,7 +131,7 @@ function DcaDetailContent() {
     return 'USD';
   }, [isNew, fullTicker, tickerParam]);
 
-  const [entries, setEntries] = useState<DcaEntry[]>([]);
+  const [entries, setEntries] = useState<CollectEntry[]>([]);
   const [loading, setLoading] = useState(!isNew);
   const [adding, setAdding] = useState(false);
   const [newDate, setNewDate] = useState(getToday());
@@ -164,16 +146,13 @@ function DcaDetailContent() {
   const fetchEntries = useCallback(async () => {
     if (!user || !tickerParam) return;
     try {
-      const res = await fetch(`/api/dca/entries?userId=${user.id}&ticker=${tickerParam}`);
+      const res = await fetch(`/api/collect/entries?userId=${user.id}&ticker=${tickerParam}`);
       const data = await res.json();
       setEntries(data);
       // 첫 번째 엔트리에서 종목 정보 추출
       if (data.length > 0) {
         setFetchedStockName(data[0].stockName);
         setFetchedTargetQuantity(data[0].targetQuantity);
-        setFetchedScheduleType(data[0].scheduleType ?? null);
-        setFetchedScheduleValue(data[0].scheduleValue ?? null);
-        setFetchedScheduleQuantity(data[0].scheduleQuantity ?? null);
       }
     } catch (err) {
       console.error('Failed to fetch entries:', err);
@@ -208,7 +187,6 @@ function DcaDetailContent() {
   const handleRegister = () => {
     if (!stockName.trim() || !stockTicker.trim() || !targetQuantity.trim()) return;
     setRegistered(true);
-    if (scheduleQuantity) setNewQuantity(scheduleQuantity);
     setAdding(true);
   };
 
@@ -216,9 +194,9 @@ function DcaDetailContent() {
   const handleDeleteAll = async () => {
     if (!user || !ticker) return;
     try {
-      await fetch(`/api/dca?userId=${user.id}&ticker=${ticker}`, { method: 'DELETE' });
+      await fetch(`/api/collect?userId=${user.id}&ticker=${ticker}`, { method: 'DELETE' });
       setDeleteOpen(false);
-      router.push('/dca');
+      router.push('/collect');
     } catch (err) {
       console.error('Failed to delete:', err);
     }
@@ -243,7 +221,7 @@ function DcaDetailContent() {
     const target = isNew ? Number(targetQuantity) : fetchedTargetQuantity;
 
     try {
-      const res = await fetch('/api/dca/entries', {
+      const res = await fetch('/api/collect/entries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -254,9 +232,6 @@ function DcaDetailContent() {
           date: newDate,
           amount,
           quantity,
-          scheduleType: isNew ? scheduleType : undefined,
-          scheduleValue: isNew ? scheduleValue : undefined,
-          scheduleQuantity: isNew && scheduleQuantity ? Number(scheduleQuantity) : undefined,
         }),
       });
       if (!res.ok) {
@@ -298,7 +273,7 @@ function DcaDetailContent() {
   }, [newAmount, newQuantity, entries]);
 
   // --- 수정 ---
-  const startEdit = (entry: DcaRow) => {
+  const startEdit = (entry: CollectRow) => {
     setEditing({
       id: entry.id,
       date: entry.date,
@@ -324,7 +299,7 @@ function DcaDetailContent() {
     }
 
     try {
-      await fetch(`/api/dca/entries/${editing.id}`, {
+      await fetch(`/api/collect/entries/${editing.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ date: editing.date, amount, quantity }),
@@ -394,7 +369,7 @@ function DcaDetailContent() {
         <PageHeader
           left={
             <IconButton
-              onClick={() => router.push('/dca')}
+              onClick={() => router.push('/collect')}
               sx={{
                 border: '1px solid',
                 borderColor: 'gray2',
@@ -421,7 +396,7 @@ function DcaDetailContent() {
       <PageHeader
         left={
           <IconButton
-            onClick={() => router.push('/dca')}
+            onClick={() => router.push('/collect')}
             sx={{
               border: '1px solid',
               borderColor: 'gray2',
@@ -449,7 +424,7 @@ function DcaDetailContent() {
             }}
           >
             <Typography variant="h5" fontWeight={700} sx={{ mb: 3 }}>
-              신규 적립식 매수 등록
+              신규 주식 모으기 등록
             </Typography>
             <Stack spacing={2.5} sx={{ maxWidth: 400 }}>
               <TextField
@@ -491,53 +466,6 @@ function DcaDetailContent() {
                 slotProps={{ htmlInput: { min: 1 } }}
                 fullWidth
               />
-              <TextField
-                select
-                label="투자 주기"
-                value={scheduleType}
-                onChange={(e) => {
-                  const v = e.target.value as 'weekly' | 'monthly';
-                  setScheduleType(v);
-                  setScheduleValue(1);
-                }}
-                fullWidth
-              >
-                <MenuItem value="weekly">매주</MenuItem>
-                <MenuItem value="monthly">매달</MenuItem>
-              </TextField>
-              <TextField
-                select
-                label={scheduleType === 'weekly' ? '요일' : '날짜'}
-                value={scheduleValue}
-                onChange={(e) => setScheduleValue(Number(e.target.value))}
-                fullWidth
-              >
-                {scheduleType === 'weekly'
-                  ? [
-                      { value: 1, label: '월요일' },
-                      { value: 2, label: '화요일' },
-                      { value: 3, label: '수요일' },
-                      { value: 4, label: '목요일' },
-                      { value: 5, label: '금요일' },
-                      { value: 6, label: '토요일' },
-                      { value: 7, label: '일요일' },
-                    ].map((d) => (
-                      <MenuItem key={d.value} value={d.value}>{d.label}</MenuItem>
-                    ))
-                  : Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                      <MenuItem key={d} value={d}>{d}일</MenuItem>
-                    ))
-                }
-              </TextField>
-              <TextField
-                label="1회 매수 수량"
-                type="number"
-                placeholder="예: 5"
-                value={scheduleQuantity}
-                onChange={(e) => setScheduleQuantity(e.target.value)}
-                slotProps={{ htmlInput: { min: 0, step: 'any' } }}
-                fullWidth
-              />
               <Box sx={{ display: 'flex', gap: 1.5, pt: 1 }}>
                 <Button
                   variant="contained"
@@ -548,7 +476,7 @@ function DcaDetailContent() {
                 </Button>
                 <Button
                   variant="outlined"
-                  onClick={() => router.push('/dca')}
+                  onClick={() => router.push('/collect')}
                   sx={{ color: 'gray7', borderColor: 'gray3' }}
                 >
                   취소
@@ -565,21 +493,9 @@ function DcaDetailContent() {
                   {ticker} · 목표수량 {displayTarget.toLocaleString()}주
                 </Typography>
               )}
-              {(() => {
-                const sType = isNew ? scheduleType : fetchedScheduleType;
-                const sValue = isNew ? scheduleValue : fetchedScheduleValue;
-                const sQty = isNew ? (scheduleQuantity ? Number(scheduleQuantity) : null) : fetchedScheduleQuantity;
-                const schedule = formatSchedule(sType, sValue, sQty);
-                return schedule ? (
-                  <Typography variant="body2" color="primary.main" fontWeight={600} sx={{ mt: 0.5 }}>
-                    투자날짜: {schedule}
-                  </Typography>
-                ) : (
-                  <Typography variant="body2" color="gray5" sx={{ mt: 0.5 }}>
-                    적립식 매수 일지
-                  </Typography>
-                );
-              })()}
+              <Typography variant="body2" color="gray5" sx={{ mt: 0.5 }}>
+                주식 모으기 일지
+              </Typography>
             </Box>
             {!isBusy && (
               <Stack direction="row" spacing={1.5}>
@@ -594,11 +510,7 @@ function DcaDetailContent() {
                 <Button
                   variant="contained"
                   startIcon={<AddIcon />}
-                  onClick={() => {
-                    const qty = isNew ? scheduleQuantity : (fetchedScheduleQuantity ? String(fetchedScheduleQuantity) : '');
-                    setNewQuantity(qty);
-                    setAdding(true);
-                  }}
+                  onClick={() => setAdding(true)}
                 >
                   매수 추가
                 </Button>
@@ -918,7 +830,7 @@ function DcaDetailContent() {
       </Stack>
 
       <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)}>
-        <DialogTitle>적립식 투자 종료</DialogTitle>
+        <DialogTitle>주식 모으기 종료</DialogTitle>
         <DialogContent>
           <DialogContentText>
             <strong>{displayName}({ticker})</strong>의 모든 매수 기록이 삭제됩니다.
@@ -950,10 +862,10 @@ function DcaDetailContent() {
   );
 }
 
-export default function DcaDetailPage() {
+export default function CollectDetailPage() {
   return (
     <Suspense>
-      <DcaDetailContent />
+      <CollectDetailContent />
     </Suspense>
   );
 }
