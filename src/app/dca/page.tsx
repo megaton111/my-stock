@@ -6,6 +6,7 @@ import {
   Container, Typography, Box, Paper, Stack, CircularProgress,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import PageHeader from '@/components/PageHeader';
 import { useUser } from '@/hooks/useUser';
 
@@ -18,6 +19,7 @@ interface DcaStock {
   scheduleType: 'weekly' | 'monthly' | null;
   scheduleValue: number | null;
   scheduleQuantity: number | null;
+  lastEntryDate: string | null;
 }
 
 const DAY_LABELS = ['', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
@@ -28,8 +30,32 @@ function formatSchedule(type: string | null, value: number | null, qty?: number 
   if (type === 'weekly') label = `매주 ${DAY_LABELS[value] || ''}`;
   else if (type === 'monthly') label = `매달 ${value}일`;
   else return null;
-  if (qty) label += ` · ${qty}주`;
+  if (qty) label += ` · ${qty}주씩`;
   return label;
+}
+
+/** 마지막 매수일 이후 ~ 오늘까지 미입력된 스케줄 날짜 수 */
+function getOverdueCount(
+  scheduleType: string | null,
+  scheduleValue: number | null,
+  lastEntryDate: string | null,
+): number {
+  if (!scheduleType || scheduleValue == null || !lastEntryDate) return 0;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const lastDate = new Date(lastEntryDate + 'T00:00:00');
+  const current = new Date(lastDate);
+  current.setDate(current.getDate() + 1);
+
+  let count = 0;
+  while (current <= today) {
+    if (scheduleType === 'weekly' && current.getDay() === Number(scheduleValue) % 7) count++;
+    else if (scheduleType === 'monthly' && current.getDate() === Number(scheduleValue)) count++;
+    current.setDate(current.getDate() + 1);
+  }
+  return count;
 }
 
 function getProgressPercent(current: number, target: number) {
@@ -48,7 +74,7 @@ export default function DcaPage() {
     try {
       const res = await fetch(`/api/dca?userId=${user.id}`);
       const data = await res.json();
-      setStocks(data);
+      setStocks(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Failed to fetch DCA stocks:', err);
     } finally {
@@ -87,6 +113,7 @@ export default function DcaPage() {
           >
             {stocks.map((stock) => {
               const percent = getProgressPercent(stock.currentQuantity, stock.targetQuantity);
+              const overdueCount = getOverdueCount(stock.scheduleType, stock.scheduleValue, stock.lastEntryDate);
               return (
                 <Paper
                   key={stock.ticker}
@@ -106,7 +133,28 @@ export default function DcaPage() {
                   }}
                 >
                   <Stack spacing={1.5}>
-                    <Typography fontSize={30} fontWeight={600}>{stock.stockName}</Typography>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between">
+                      <Typography fontSize={30} fontWeight={600}>{stock.stockName}</Typography>
+                      {overdueCount > 0 && (
+                        <Box
+                          sx={{
+                            px: 1,
+                            py: 0.25,
+                            bgcolor: 'rgba(255, 152, 0, 0.1)',
+                            borderRadius: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                            flexShrink: 0,
+                          }}
+                        >
+                          <WarningAmberIcon sx={{ fontSize: 14, color: 'warning.main' }} />
+                          <Typography variant="caption" color="warning.dark" fontWeight={600} lineHeight={1}>
+                            {overdueCount}건 미입력
+                          </Typography>
+                        </Box>
+                      )}
+                    </Stack>
                     <Stack direction="column" spacing={0.5}>
                       {(() => {
                         const schedule = formatSchedule(stock.scheduleType, stock.scheduleValue, stock.scheduleQuantity);
@@ -149,6 +197,7 @@ export default function DcaPage() {
                         }}
                       />
                     </Box>
+
                   </Stack>
                 </Paper>
               );

@@ -63,7 +63,7 @@ function formatSchedule(type: string | null, value: number | null, qty?: number 
   if (type === 'weekly') label = `매주 ${DAY_LABELS[value] || ''}`;
   else if (type === 'monthly') label = `매달 ${value}일`;
   else return null;
-  if (qty) label += ` · ${qty}주`;
+  if (qty) label += ` · ${qty}주씩`;
   return label;
 }
 
@@ -99,6 +99,48 @@ function getToday(): string {
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
+}
+
+function formatDateStr(date: Date): string {
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+/** scheduleValue 1(월)~7(일) → JS Date.getDay() 0(일)~6(토) 변환 */
+function isScheduleDay(date: Date, type: 'weekly' | 'monthly', value: number): boolean {
+  if (type === 'weekly') return date.getDay() === value % 7;
+  return date.getDate() === value;
+}
+
+/** 마지막 매수일 이후 ~ 오늘까지 미입력된 스케줄 날짜 목록 반환 */
+function getPendingScheduleDates(
+  scheduleType: 'weekly' | 'monthly' | null,
+  scheduleValue: number | null,
+  entries: DcaEntry[],
+): string[] {
+  if (!scheduleType || scheduleValue == null || entries.length === 0) return [];
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const entryDates = new Set(entries.map((e) => e.date));
+  const sortedDates = entries.map((e) => e.date).sort();
+  const lastDate = new Date(sortedDates[sortedDates.length - 1] + 'T00:00:00');
+
+  const current = new Date(lastDate);
+  current.setDate(current.getDate() + 1);
+
+  const pending: string[] = [];
+  while (current <= today) {
+    const dateStr = formatDateStr(current);
+    if (isScheduleDay(current, scheduleType, scheduleValue) && !entryDates.has(dateStr)) {
+      pending.push(dateStr);
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  return pending;
 }
 
 function computeEditPreview(entries: DcaEntry[], draft: EditDraft) {
@@ -225,6 +267,13 @@ function DcaDetailContent() {
   };
 
   const rows = useMemo(() => computeRows(entries).reverse(), [entries]);
+
+  // 미입력 스케줄 날짜 계산
+  const pendingDates = useMemo(() => {
+    const sType = isNew ? (registered ? scheduleType : null) : fetchedScheduleType;
+    const sValue = isNew ? (registered ? scheduleValue : null) : fetchedScheduleValue;
+    return getPendingScheduleDates(sType as 'weekly' | 'monthly' | null, sValue, entries);
+  }, [isNew, registered, scheduleType, scheduleValue, fetchedScheduleType, fetchedScheduleValue, entries]);
 
   // --- 추가 ---
   const handleAddConfirm = async () => {
@@ -816,8 +865,42 @@ function DcaDetailContent() {
                   </TableRow>
                 )}
 
+                {/* 미입력 스케줄 행 */}
+                {pendingDates.slice().reverse()
+                  .filter((date) => !(adding && newDate === date))
+                  .map((date) => (
+                    <TableRow
+                      key={`pending-${date}`}
+                      sx={{
+                        bgcolor: 'rgba(255, 167, 38, 0.08)',
+                        cursor: isBusy ? 'default' : 'pointer',
+                        '&:hover': isBusy ? {} : { bgcolor: 'rgba(255, 167, 38, 0.15)' },
+                      }}
+                      onClick={() => {
+                        if (isBusy) return;
+                        setNewDate(date);
+                        const qty = isNew ? scheduleQuantity : (fetchedScheduleQuantity ? String(fetchedScheduleQuantity) : '');
+                        setNewQuantity(qty);
+                        setAdding(true);
+                      }}
+                    >
+                      <TableCell>{date}</TableCell>
+                      <TableCell align="right" sx={{ color: 'gray4' }}>-</TableCell>
+                      <TableCell align="right" sx={{ color: 'gray4' }}>-</TableCell>
+                      <TableCell align="right" sx={{ color: 'gray4' }}>-</TableCell>
+                      <TableCell align="right" sx={{ color: 'gray4' }}>-</TableCell>
+                      <TableCell align="right" sx={{ color: 'gray4' }}>-</TableCell>
+                      <TableCell align="right" sx={{ color: 'gray4' }}>-</TableCell>
+                      <TableCell align="center">
+                        <Typography variant="caption" color="warning.main" fontWeight={600}>
+                          미입력
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+
                 {/* 기존 데이터 */}
-                {rows.length === 0 && !adding ? (
+                {rows.length === 0 && !adding && pendingDates.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={COLUMNS.length + 1} align="center" sx={{ py: 6, color: 'gray5' }}>
                       매수 기록이 없습니다. 매수 내역을 추가해보세요.

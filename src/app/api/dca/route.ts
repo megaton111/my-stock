@@ -9,27 +9,54 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'userId가 필요합니다.' }, { status: 400 });
   }
 
-  // Supabase RPC로 GROUP BY 집계 수행
-  const { data, error } = await supabase.rpc('get_dca_summary', {
-    p_user_id: Number(userId),
-  });
+  // RPC 대신 직접 조회 후 JS에서 집계
+  const { data, error } = await supabase
+    .from('dca_entries')
+    .select('id, stock_name, ticker, target_quantity, quantity, purchase_date, schedule_type, schedule_value, schedule_quantity')
+    .eq('user_id', Number(userId))
+    .order('id', { ascending: true });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(
-    (data ?? []).map((r: Record<string, unknown>) => ({
-      stockName: r.stock_name,
-      ticker: r.ticker,
-      targetQuantity: Number(r.target_quantity),
-      currentQuantity: Number(r.current_quantity),
-      entryCount: Number(r.entry_count),
-      scheduleType: r.schedule_type ?? null,
-      scheduleValue: r.schedule_value != null ? Number(r.schedule_value) : null,
-      scheduleQuantity: r.schedule_quantity != null ? Number(r.schedule_quantity) : null,
-    })),
-  );
+  // ticker 기준 집계
+  const groupMap = new Map<string, {
+    stockName: string;
+    ticker: string;
+    targetQuantity: number;
+    currentQuantity: number;
+    entryCount: number;
+    scheduleType: string | null;
+    scheduleValue: number | null;
+    scheduleQuantity: number | null;
+    lastEntryDate: string | null;
+  }>();
+
+  for (const r of data ?? []) {
+    const existing = groupMap.get(r.ticker);
+    if (existing) {
+      existing.currentQuantity += Number(r.quantity);
+      existing.entryCount += 1;
+      if (r.purchase_date > (existing.lastEntryDate ?? '')) {
+        existing.lastEntryDate = r.purchase_date;
+      }
+    } else {
+      groupMap.set(r.ticker, {
+        stockName: r.stock_name,
+        ticker: r.ticker,
+        targetQuantity: Number(r.target_quantity),
+        currentQuantity: Number(r.quantity),
+        entryCount: 1,
+        scheduleType: r.schedule_type ?? null,
+        scheduleValue: r.schedule_value != null ? Number(r.schedule_value) : null,
+        scheduleQuantity: r.schedule_quantity != null ? Number(r.schedule_quantity) : null,
+        lastEntryDate: r.purchase_date ?? null,
+      });
+    }
+  }
+
+  return NextResponse.json([...groupMap.values()]);
 }
 
 // DELETE /api/dca?userId=X&ticker=Y → 특정 종목의 모든 매수 기록 삭제
