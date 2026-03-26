@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Container, Typography, Box, Paper, Stack, CircularProgress,
+  Container, Typography, Box, Paper, Stack, CircularProgress, Button,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
@@ -91,11 +91,20 @@ export default function DcaPage() {
       <PageHeader />
 
       <Stack spacing={3} sx={{ alignItems: 'center' }}>
-        <Box sx={{ width: '100%' }}>
-          <Typography variant="h5" fontWeight={700}>적립식 매수 일지</Typography>
-          <Typography variant="body2" color="gray5" sx={{ mt: 0.5 }}>
-            카드를 클릭하여 매수 일지를 작성하세요
-          </Typography>
+        <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box>
+            <Typography variant="h5" fontWeight={700}>적립식 매수 일지</Typography>
+            <Typography variant="body2" color="gray5" sx={{ mt: 0.5 }}>
+              카드를 클릭하여 매수 일지를 작성하세요
+            </Typography>
+          </Box>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => router.push('/dca/detail')}
+          >
+            신규 등록
+          </Button>
         </Box>
 
         {loading ? (
@@ -203,49 +212,6 @@ export default function DcaPage() {
               );
             })}
 
-            {/* 신규 적립식 매수 등록 카드 */}
-            <Paper
-              onClick={() => router.push('/dca/detail')}
-              sx={{
-                p: 3,
-                border: '2px dashed',
-                borderColor: 'gray3',
-                boxShadow: 'none',
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minHeight: 180,
-                transition: 'border-color 0.2s, transform 0.2s',
-                '&:hover': {
-                  borderColor: 'primary.main',
-                  transform: 'translateY(-2px)',
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
-                },
-              }}
-            >
-              <Box
-                sx={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: '50%',
-                  bgcolor: 'gray1',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  mb: 1.5,
-                }}
-              >
-                <AddIcon sx={{ fontSize: 28, color: 'gray5' }} />
-              </Box>
-              <Typography fontSize={16} fontWeight={600} color="gray6">
-                신규 등록
-              </Typography>
-              <Typography fontSize={13} color="gray5" sx={{ mt: 0.5 }}>
-                새 적립식 매수 일지 만들기
-              </Typography>
-            </Paper>
           </Box>
         )}
       </Stack>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel } from '@mui/material';
+import { Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, Chip } from '@mui/material';
 import { Investment } from '@/types/investment';
 import { investedAmount, currentValue } from '@/utils/calculator';
 import { formatCurrency, formatKRW, formatRate, formatProfit, profitColor } from '@/utils/format';
@@ -120,7 +120,7 @@ export default function InvestmentTable({ investments, prices, exchangeRate }: I
             <TableRow key={item.ticker} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
               <TableCell sx={{ fontWeight: 600 }}>{item.name}</TableCell>
               <TableCell sx={{ color: 'gray6' }}>{item.ticker}</TableCell>
-              <TableCell>{item.category}</TableCell>
+              <TableCell><Chip label={item.category} size="small" variant="outlined" /></TableCell>
               <TableCell align="right">{formatKRW(invested)}</TableCell>
               <TableCell align="right">{item.quantity.toLocaleString()}</TableCell>
               <TableCell align="right">{formatCurrency(item.avgPrice, item.currency)}</TableCell>
