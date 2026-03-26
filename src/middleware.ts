@@ -25,6 +25,20 @@ export async function middleware(request: NextRequest) {
     },
   );
 
+  // PKCE flow: ?code= 파라미터가 도착하면 미들웨어에서 직접 세션 교환
+  const code = request.nextUrl.searchParams.get('code');
+  if (code) {
+    await supabase.auth.exchangeCodeForSession(code);
+    const url = request.nextUrl.clone();
+    url.searchParams.delete('code');
+    const redirectResponse = NextResponse.redirect(url);
+    // 세션 쿠키를 리다이렉트 응답에 복사
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value);
+    });
+    return redirectResponse;
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
