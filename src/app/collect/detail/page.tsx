@@ -140,6 +140,7 @@ function CollectDetailContent() {
   const [editing, setEditing] = useState<EditDraft | null>(null);
   const [snackbar, setSnackbar] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [duplicateMsg, setDuplicateMsg] = useState<string | null>(null);
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
 
   // 기존 종목: DB에서 매수 기록 로드
@@ -184,8 +185,21 @@ function CollectDetailContent() {
   }, [isNew, registered, fetchPrice]);
 
   // 신규 등록
-  const handleRegister = () => {
-    if (!stockName.trim() || !stockTicker.trim() || !targetQuantity.trim()) return;
+  const handleRegister = async () => {
+    if (!stockName.trim() || !stockTicker.trim() || !targetQuantity.trim() || !user) return;
+
+    // 이미 등록된 종목인지 확인
+    try {
+      const res = await fetch(`/api/collect?userId=${user.id}`);
+      const existing = await res.json();
+      if (Array.isArray(existing) && existing.some((item: { ticker: string }) => item.ticker === fullTicker)) {
+        setDuplicateMsg(`${stockName}(${fullTicker})은 이미 주식 모으기에 등록된 종목입니다.`);
+        return;
+      }
+    } catch {
+      // 조회 실패 시 등록 진행
+    }
+
     setRegistered(true);
     setAdding(true);
   };
@@ -412,7 +426,7 @@ function CollectDetailContent() {
         }
       />
 
-      <Stack spacing={4}>
+      <Stack spacing={1}>
         {/* 신규 등록 폼 */}
         {isNew && !registered ? (
           <Paper
@@ -485,7 +499,7 @@ function CollectDetailContent() {
             </Stack>
           </Paper>
         ) : (
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', pb: 2 }}>
             <Box>
               <Typography variant="h4" fontWeight={700}>{displayName}</Typography>
               {displayTarget > 0 && (
@@ -498,7 +512,7 @@ function CollectDetailContent() {
               </Typography>
             </Box>
             {!isBusy && (
-              <Stack direction="row" spacing={1.5}>
+              <Stack direction="row" spacing={1}>
                 <Button
                   variant="outlined"
                   color="error"
@@ -525,7 +539,7 @@ function CollectDetailContent() {
             sx={{
               display: 'grid',
               gridTemplateColumns: { xs: '1fr 1fr', md: '1fr 1fr 1fr 1fr 1fr' },
-              gap: 2,
+              gap: 1,
             }}
           >
             {[
@@ -840,6 +854,16 @@ function CollectDetailContent() {
         <DialogActions>
           <Button onClick={() => setDeleteOpen(false)}>취소</Button>
           <Button onClick={handleDeleteAll} color="error" variant="contained">종료</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={!!duplicateMsg} onClose={() => setDuplicateMsg(null)}>
+        <DialogTitle>종목 중복</DialogTitle>
+        <DialogContent>
+          <DialogContentText>{duplicateMsg}</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDuplicateMsg(null)} variant="contained">확인</Button>
         </DialogActions>
       </Dialog>
 

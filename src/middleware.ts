@@ -25,9 +25,9 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  // PKCE flow: ?code= 파라미터가 도착하면 미들웨어에서 직접 세션 교환
+  // PKCE flow: /auth/callback이 아닌 경로에 ?code=가 도착하면 미들웨어에서 직접 세션 교환
   const code = request.nextUrl.searchParams.get('code');
-  if (code) {
+  if (code && !request.nextUrl.pathname.startsWith('/auth/callback')) {
     await supabase.auth.exchangeCodeForSession(code);
     const url = request.nextUrl.clone();
     url.searchParams.delete('code');
@@ -60,6 +60,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|sitemap\\.xml|robots\\.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

@@ -13,8 +13,21 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "My Stock",
-  description: "Stock management application built with MUI v7",
+  title: "주식 트래커 - 적립식 투자 일지 & 주식 투자 기록 관리",
+  description: "적립식 투자, 주식 모으기, 투자 일지를 한곳에서 관리하세요. 실시간 시세 조회, 수익률 계산, 매수 기록 추적까지 무료로 제공하는 주식 포트폴리오 트래커입니다.",
+  keywords: ["적립식투자", "주식투자기록", "적립식투자일지", "주식모으기", "주식포트폴리오", "투자일지", "주식트래커", "주식수익률"],
+  openGraph: {
+    title: "주식 트래커 - 적립식 투자 일지 & 주식 투자 기록 관리",
+    description: "적립식 투자, 주식 모으기, 투자 일지를 한곳에서 관리하세요. 실시간 시세 조회, 수익률 계산, 매수 기록 추적까지 무료로 제공합니다.",
+    url: "https://stocktracker.co.kr",
+    siteName: "주식 트래커",
+    locale: "ko_KR",
+    type: "website",
+  },
+  metadataBase: new URL("https://stocktracker.co.kr"),
+  alternates: {
+    canonical: "/",
+  },
 };
 
 export default function RootLayout({
