@@ -61,9 +61,9 @@ export default function LandingPage() {
       <Box sx={{ bgcolor: 'background.paper', pt: { xs: 10, md: 14 }, pb: { xs: 8, md: 12 } }}>
         <Container maxWidth="md">
           <Stack alignItems="center" spacing={3} textAlign="center">
-            {/* <Typography variant="body1" color="primary.main" fontWeight={600}>
+            <Typography variant="body1" color="primary.main" fontWeight={600}>
               주식트래커
-            </Typography> */}
+            </Typography>
             <Typography
               variant="h1"
               sx={{
