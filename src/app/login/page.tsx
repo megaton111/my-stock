@@ -67,7 +67,7 @@ function LoginContent() {
           }}
         >
           <Typography variant="body1" color="gray5" sx={{ mb: 4 }}>
-            주식 트래커
+            주식트래커
           </Typography>
 
           {error && (

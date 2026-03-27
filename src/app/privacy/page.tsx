@@ -38,7 +38,7 @@ export default function PrivacyPage() {
         </Typography>
 
         <Typography variant="body2" color="text.secondary" sx={{ mb: 4, lineHeight: 1.8 }}>
-          주식 트래커(이하 &quot;서비스&quot;)는 「개인정보 보호법」에 따라 이용자의 개인정보를 보호하고,
+          주식트래커(이하 &quot;서비스&quot;)는 「개인정보 보호법」에 따라 이용자의 개인정보를 보호하고,
           이와 관련한 고충을 신속하게 처리하기 위하여 다음과 같이 개인정보처리방침을 수립·공개합니다.
         </Typography>
 
@@ -179,7 +179,7 @@ export default function PrivacyPage() {
           </Typography>
           <Box sx={{ mt: 1, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
             <Typography variant="body2" color="text.secondary">
-              서비스명: 주식 트래커 (stocktracker.co.kr)
+              서비스명: 주식트래커 (stocktracker.co.kr)
             </Typography>
             <Typography variant="body2" color="text.secondary">
               이메일: lkh890111@gmail.com

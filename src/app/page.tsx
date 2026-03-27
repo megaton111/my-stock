@@ -62,7 +62,7 @@ export default function LandingPage() {
         <Container maxWidth="md">
           <Stack alignItems="center" spacing={3} textAlign="center">
             {/* <Typography variant="body1" color="primary.main" fontWeight={600}>
-              주식 트래커
+              주식트래커
             </Typography> */}
             <Typography
               variant="h1"
