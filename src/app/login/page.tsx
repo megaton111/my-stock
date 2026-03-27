@@ -1,7 +1,7 @@
 'use client';
 
-import { Box, Button, Container, Paper, Typography, Stack, Alert, SvgIcon } from '@mui/material';
-import { useSearchParams } from 'next/navigation';
+import { Box, Button, Container, Paper, Typography, Stack, Alert, SvgIcon, Link as MuiLink } from '@mui/material';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Suspense } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 
@@ -30,6 +30,7 @@ function KakaoIcon() {
 
 function LoginContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const error = searchParams.get('error');
   const supabase = createClient();
 
@@ -116,6 +117,17 @@ function LoginContent() {
               카카오로 로그인
             </Button>
           </Stack>
+
+          <MuiLink
+            component="button"
+            variant="caption"
+            color="text.secondary"
+            underline="hover"
+            onClick={() => router.push('/privacy')}
+            sx={{ mt: 3, display: 'inline-block' }}
+          >
+            개인정보처리방침
+          </MuiLink>
         </Paper>
       </Box>
     </Container>

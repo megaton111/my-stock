@@ -12,6 +12,7 @@ import SavingsIcon from '@mui/icons-material/Savings';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
+import PolicyIcon from '@mui/icons-material/Policy';
 import { useRouter, usePathname } from 'next/navigation';
 import { useUser } from '@/hooks/useUser';
 
@@ -83,6 +84,17 @@ export default function AppDrawer({ open, onClose }: AppDrawerProps) {
             </ListItem>
           ))}
           <ListItem disablePadding sx={{ mt: 2, borderTop: '1px solid', borderColor: 'gray2', pt: 2 }}>
+            <ListItemButton
+              onClick={() => handleNavigate('/privacy')}
+              sx={{ borderRadius: 1, color: 'gray6' }}
+            >
+              <ListItemIcon sx={{ minWidth: 36, color: 'inherit' }}>
+                <PolicyIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="개인정보처리방침" />
+            </ListItemButton>
+          </ListItem>
+          <ListItem disablePadding>
             <ListItemButton
               onClick={() => { onClose(); signOut(); }}
               sx={{ borderRadius: 1, color: 'gray6' }}
