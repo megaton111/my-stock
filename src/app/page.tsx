@@ -96,32 +96,32 @@ export default function LandingPage() {
 
       {/* Preview */}
       <Container maxWidth="md" sx={{ py: { xs: 6, md: 10 } }}>
-        <Stack spacing={3}>
+        <Stack spacing={{ xs: 1, md: 3 }}>
           <Typography variant="h2" sx={{ fontSize: { xs: '1.5rem', md: '2rem' } }}>
             투자 내역 관리
           </Typography>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <Paper sx={{ p: 3, flex: 1 }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1, md: 2 }}>
+            <Paper sx={{ p: { xs: 2, sm: 3 }, flex: 1 }}>
               <Typography variant="body2" color="gray5" gutterBottom>총 자산</Typography>
-              <Typography variant="h5" fontWeight={700} sx={{ letterSpacing: '-1.5px' }}>
+              <Typography fontWeight={700} sx={{ letterSpacing: '-1.5px', fontSize: { xs: '1.1rem', sm: '1.5rem' } }}>
                 20,140,000원
               </Typography>
             </Paper>
-            <Paper sx={{ p: 3, flex: 1 }}>
+            <Paper sx={{ p: { xs: 2, sm: 3 }, flex: 1 }}>
               <Typography variant="body2" color="gray5" gutterBottom>수익률</Typography>
-              <Typography variant="h5" fontWeight={700} sx={{ letterSpacing: '-1.5px' }} color="error.main">
+              <Typography fontWeight={700} sx={{ letterSpacing: '-1.5px', fontSize: { xs: '1.1rem', sm: '1.5rem' } }} color="error.main">
                 +18.3%
               </Typography>
             </Paper>
-            <Paper sx={{ p: 3, flex: 1 }}>
+            <Paper sx={{ p: { xs: 2, sm: 3 }, flex: 1 }}>
               <Typography variant="body2" color="gray5" gutterBottom>총 투자금액</Typography>
-              <Typography variant="h5" fontWeight={700} sx={{ letterSpacing: '-1.5px' }}>
+              <Typography fontWeight={700} sx={{ letterSpacing: '-1.5px', fontSize: { xs: '1.1rem', sm: '1.5rem' } }}>
                 17,020,000원
               </Typography>
             </Paper>
           </Stack>
 
-          <Box sx={{ position: 'relative', minHeight: 240 }}>
+          <Box sx={{ position: 'relative', minHeight: { xs: 216, sm: 240 } }}>
             {/* 테이블 뷰 */}
             <Paper sx={{
               overflow: 'hidden',
@@ -137,18 +137,18 @@ export default function LandingPage() {
                   alignItems="center"
                   justifyContent="space-between"
                   sx={{
-                    px: 3,
-                    py: 2,
+                    px: { xs: 2, sm: 3 },
+                    py: { xs: 1.5, sm: 2 },
                     borderBottom: i < SAMPLE_STOCKS.length - 1 ? '1px solid' : 'none',
                     borderColor: 'gray2',
                   }}
                 >
                   <Box>
-                    <Typography variant="body1" fontWeight={600}>{stock.name}</Typography>
+                    <Typography variant="body1" fontWeight={600} fontSize={{ xs: '0.9rem', sm: '1rem' }}>{stock.name}</Typography>
                     <Typography variant="caption" color="gray5">{stock.ticker}</Typography>
                   </Box>
                   <Stack alignItems="flex-end">
-                    <Typography variant="body1" fontWeight={600}>{stock.value}</Typography>
+                    <Typography variant="body1" fontWeight={600} fontSize={{ xs: '0.9rem', sm: '1rem' }}>{stock.value}</Typography>
                     <Typography variant="body2" fontWeight={600} color={stock.color}>
                       {stock.profit}
                     </Typography>
@@ -174,7 +174,7 @@ export default function LandingPage() {
                   key={stock.ticker}
                   sx={{
                     flex: `${stock.pct} 0 0`,
-                    minHeight: 110,
+                    minHeight: { xs: 100, sm: 110 },
                     bgcolor: stock.treemapColor,
                     borderRadius: 1.5,
                     display: 'flex',
@@ -185,8 +185,8 @@ export default function LandingPage() {
                     px: 1,
                   }}
                 >
-                  <Typography variant="body2" fontWeight={700}>{stock.name}</Typography>
-                  <Typography variant="caption" sx={{ opacity: 0.85 }}>{stock.profit}</Typography>
+                  <Typography variant="body2" fontWeight={700} fontSize={{ xs: '0.75rem', sm: '0.875rem' }}>{stock.name}</Typography>
+                  <Typography variant="caption" sx={{ opacity: 0.85, fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>{stock.profit}</Typography>
                 </Box>
               ))}
             </Paper>
@@ -197,14 +197,14 @@ export default function LandingPage() {
       {/* DCA */}
       <Box sx={{ bgcolor: 'background.paper', py: { xs: 6, md: 10 } }}>
         <Container maxWidth="md">
-          <Stack spacing={3}>
+          <Stack spacing={{ xs: 1, md: 3 }}>
             <Typography variant="h2" sx={{ fontSize: { xs: '1.5rem', md: '2rem' } }}>
               적립식 매매 일지
             </Typography>
             <Box sx={{
               display: 'grid',
-              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr' },
-              gap: 1.5,
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
+              gap: { xs: 1, md: 1.5 },
             }}>
               {SAMPLE_DCA.map((stock) => (
                 <Paper
@@ -217,7 +217,7 @@ export default function LandingPage() {
                   }}
                 >
                   <Stack spacing={1.5}>
-                    <Typography fontSize={28} fontWeight={600}>{stock.name}</Typography>
+                    <Typography sx={{ fontSize: { xs: 24, sm: 28 } }} fontWeight={600}>{stock.name}</Typography>
                     <Stack spacing={0.5}>
                       <Stack direction="row" alignItems="center" justifyContent="space-between">
                         <Typography variant="body1" fontSize="16px" flexShrink={0}>투자날짜</Typography>
@@ -259,12 +259,12 @@ export default function LandingPage() {
       </Box>
 
       {/* Features */}
-      <Box sx={{ bgcolor: 'background.paper', py: { xs: 6, md: 10 } }}>
+      <Box sx={{ py: { xs: 6, md: 10 } }}>
         <Container maxWidth="md">
-          <Typography variant="h2" sx={{ mb: 4, fontSize: { xs: '1.5rem', md: '2rem' } }}>
+          <Typography variant="h2" sx={{ mb: { xs: 1, md: 4 }, fontSize: { xs: '1.5rem', md: '2rem' } }}>
             주요 기능
           </Typography>
-          <Grid container spacing={3}>
+          <Grid container spacing={{ xs: 1, md: 3 }}>
             {FEATURES.map((feature) => (
               <Grid size={{ xs: 12, sm: 6 }} key={feature.title}>
                 <Paper sx={{ p: 4, height: '100%', boxShadow: 'none', border: '1px solid', borderColor: 'gray2' }}>

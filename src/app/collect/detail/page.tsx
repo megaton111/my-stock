@@ -499,7 +499,13 @@ function CollectDetailContent() {
             </Stack>
           </Paper>
         ) : (
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', pb: 2 }}>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            justifyContent="space-between"
+            alignItems={{ xs: 'flex-start', sm: 'flex-end' }}
+            spacing={2}
+            sx={{ pb: 2 }}
+          >
             <Box>
               <Typography variant="h4" fontWeight={700}>{displayName}</Typography>
               {displayTarget > 0 && (
@@ -512,7 +518,7 @@ function CollectDetailContent() {
               </Typography>
             </Box>
             {!isBusy && (
-              <Stack direction="row" spacing={1}>
+              <Stack direction="row" spacing={1} flexShrink={0}>
                 <Button
                   variant="outlined"
                   color="error"
@@ -530,7 +536,7 @@ function CollectDetailContent() {
                 </Button>
               </Stack>
             )}
-          </Box>
+          </Stack>
         )}
 
         {/* 요약 카드 */}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, Chip } from '@mui/material';
+import { Box, Paper, Stack, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, Chip } from '@mui/material';
 import { Investment } from '@/types/investment';
 import { investedAmount, currentValue } from '@/utils/calculator';
 import { formatCurrency, formatKRW, formatRate, formatProfit, profitColor } from '@/utils/format';
@@ -92,54 +92,108 @@ export default function InvestmentTable({ investments, prices, exchangeRate }: I
     }
   };
 
+  const labelSx = { color: 'gray6', fontSize: '0.85rem' } as const;
+  const valueSx = { fontSize: '0.85rem', textAlign: 'right' } as const;
+
   return (
-    <TableContainer component={Paper} sx={{ boxShadow: 'none', border: (theme) => `1px solid ${theme.palette.gray2}` }}>
-      <Table>
-        <TableHead sx={{ bgcolor: 'gray1' }}>
-          <TableRow>
-            {COLUMNS.map((col) => (
-              <TableCell key={col.key} align={col.align} sx={{ color: 'gray7', fontWeight: 600 }}>
-                <TableSortLabel
-                  active={sortKey === col.key}
-                  direction={sortKey === col.key ? sortDir : 'asc'}
-                  onClick={() => handleSort(col.key)}
-                  sx={{
-                    '&.MuiTableSortLabel-root': { color: 'gray7' },
-                    '&.Mui-active': { color: 'gray9' },
-                    flexDirection: col.align === 'right' ? 'row-reverse' : 'row',
-                  }}
-                >
-                  {col.label}
-                </TableSortLabel>
-              </TableCell>
-            ))}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {sortedRows.map(({ item, price, invested, current, profit, rate }) => (
-            <TableRow key={item.ticker} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-              <TableCell sx={{ fontWeight: 600 }}>{item.name}</TableCell>
-              <TableCell sx={{ color: 'gray6' }}>{item.ticker}</TableCell>
-              <TableCell><Chip label={item.category} size="small" variant="outlined" /></TableCell>
-              <TableCell align="right">{formatKRW(invested)}</TableCell>
-              <TableCell align="right">{item.quantity.toLocaleString()}</TableCell>
-              <TableCell align="right">{formatCurrency(item.avgPrice, item.currency)}</TableCell>
-              <TableCell align="right" sx={{ fontWeight: 700 }}>
-                {price ? formatCurrency(price, item.currency) : '-'}
-              </TableCell>
-              <TableCell align="right" sx={{ color: profitColor(rate), fontWeight: 700 }}>
-                {price ? formatRate(rate) : '-'}
-              </TableCell>
-              <TableCell align="right" sx={{ color: profitColor(profit), fontWeight: 700 }}>
-                {price ? formatProfit(profit) : '-'}
-              </TableCell>
-              <TableCell align="right" sx={{ fontWeight: 700 }}>
-                {price ? formatKRW(current) : '-'}
-              </TableCell>
+    <>
+      {/* 데스크탑: 테이블 */}
+      <TableContainer component={Paper} sx={{ display: { xs: 'none', md: 'block' }, boxShadow: 'none', border: (theme) => `1px solid ${theme.palette.gray2}` }}>
+        <Table>
+          <TableHead sx={{ bgcolor: 'gray1' }}>
+            <TableRow>
+              {COLUMNS.map((col) => (
+                <TableCell key={col.key} align={col.align} sx={{ color: 'gray7', fontWeight: 600 }}>
+                  <TableSortLabel
+                    active={sortKey === col.key}
+                    direction={sortKey === col.key ? sortDir : 'asc'}
+                    onClick={() => handleSort(col.key)}
+                    sx={{
+                      '&.MuiTableSortLabel-root': { color: 'gray7' },
+                      '&.Mui-active': { color: 'gray9' },
+                      flexDirection: col.align === 'right' ? 'row-reverse' : 'row',
+                    }}
+                  >
+                    {col.label}
+                  </TableSortLabel>
+                </TableCell>
+              ))}
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
+          </TableHead>
+          <TableBody>
+            {sortedRows.map(({ item, price, invested, current, profit, rate }) => (
+              <TableRow key={item.ticker} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                <TableCell sx={{ fontWeight: 600 }}>{item.name}</TableCell>
+                <TableCell sx={{ color: 'gray6' }}>{item.ticker}</TableCell>
+                <TableCell><Chip label={item.category} size="small" variant="outlined" /></TableCell>
+                <TableCell align="right">{formatKRW(invested)}</TableCell>
+                <TableCell align="right">{item.quantity.toLocaleString()}</TableCell>
+                <TableCell align="right">{formatCurrency(item.avgPrice, item.currency)}</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700 }}>
+                  {price ? formatCurrency(price, item.currency) : '-'}
+                </TableCell>
+                <TableCell align="right" sx={{ color: profitColor(rate), fontWeight: 700 }}>
+                  {price ? formatRate(rate) : '-'}
+                </TableCell>
+                <TableCell align="right" sx={{ color: profitColor(profit), fontWeight: 700 }}>
+                  {price ? formatProfit(profit) : '-'}
+                </TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700 }}>
+                  {price ? formatKRW(current) : '-'}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      {/* 모바일: 카드 리스트 */}
+      <Stack spacing={1} sx={{ display: { xs: 'flex', md: 'none' }, width: 1 }}>
+        {sortedRows.map(({ item, price, invested, current, profit, rate }) => (
+          <Paper
+            key={item.ticker}
+            sx={{ p: 2, border: '1px solid', borderColor: 'gray2', boxShadow: 'none' }}
+          >
+            <Stack spacing={1}>
+              <Typography fontWeight={600} fontSize={20}>{item.name}</Typography>
+              <Stack spacing={0.25}>
+                <Stack direction="row" justifyContent="space-between">
+                  <Typography sx={labelSx}>매입가</Typography>
+                  <Typography sx={valueSx}>{formatCurrency(item.avgPrice, item.currency)}</Typography>
+                </Stack>
+                <Stack direction="row" justifyContent="space-between">
+                  <Typography sx={labelSx}>현재가</Typography>
+                  <Typography sx={{ ...valueSx, fontWeight: 700 }}>
+                    {price ? formatCurrency(price, item.currency) : '-'}
+                  </Typography>
+                </Stack>
+                <Stack direction="row" justifyContent="space-between">
+                  <Typography sx={labelSx}>투자금액</Typography>
+                  <Typography sx={valueSx}>{formatKRW(invested)}</Typography>
+                </Stack>
+                <Stack direction="row" justifyContent="space-between">
+                  <Typography sx={labelSx}>평가금액</Typography>
+                  <Typography sx={{ ...valueSx, fontWeight: 700 }}>
+                    {price ? formatKRW(current) : '-'}
+                  </Typography>
+                </Stack>
+                <Stack direction="row" justifyContent="space-between">
+                  <Typography sx={labelSx}>수익률</Typography>
+                  <Typography sx={{ ...valueSx, fontWeight: 700, color: profitColor(rate) }}>
+                    {price ? formatRate(rate) : '-'}
+                  </Typography>
+                </Stack>
+                <Stack direction="row" justifyContent="space-between">
+                  <Typography sx={labelSx}>수익금</Typography>
+                  <Typography sx={{ ...valueSx, fontWeight: 700, color: profitColor(profit) }}>
+                    {price ? formatProfit(profit) : '-'}
+                  </Typography>
+                </Stack>
+              </Stack>
+            </Stack>
+          </Paper>
+        ))}
+      </Stack>
+    </>
   );
 }

@@ -2,9 +2,9 @@
 
 import { useState, useMemo } from 'react';
 import {
-  Container, Typography, Box, Button, Stack,
+  Container, Typography, Box, Button, Stack, Paper,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  TableSortLabel, Paper, IconButton, Chip,
+  TableSortLabel, IconButton, Chip,
   Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
@@ -140,7 +140,7 @@ export default function InvestmentsPage() {
 
       <Stack spacing={3} sx={{ alignItems: 'center' }}>
         <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h5" fontWeight={700}>투자 내역</Typography>
+          <Typography variant="h5" fontWeight={700}>투자내역 관리</Typography>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -150,9 +150,10 @@ export default function InvestmentsPage() {
           </Button>
         </Box>
 
+        {/* 데스크탑: 테이블 */}
         <TableContainer
           component={Paper}
-          sx={{ boxShadow: 'none', border: (theme) => `1px solid ${theme.palette.gray2}` }}
+          sx={{ display: { xs: 'none', md: 'block' }, boxShadow: 'none', border: (theme) => `1px solid ${theme.palette.gray2}` }}
         >
           <Table>
             <TableHead sx={{ bgcolor: 'gray1' }}>
@@ -238,6 +239,70 @@ export default function InvestmentsPage() {
             </TableBody>
           </Table>
         </TableContainer>
+
+        {/* 모바일: 카드 리스트 */}
+        <Box sx={{ display: { xs: 'block', md: 'none' }, width: 1 }}>
+          {loading ? (
+            <Typography textAlign="center" color="gray5" sx={{ py: 6 }}>불러오는 중...</Typography>
+          ) : investments.length === 0 ? (
+            <Typography textAlign="center" color="gray5" sx={{ py: 6 }}>등록된 종목이 없습니다. 종목을 추가해보세요.</Typography>
+          ) : (
+            <Stack spacing={1}>
+              {sorted.map((item) => {
+                const source = isMergedEntry(item.id);
+                const totalAmount = item.currency === 'USD'
+                  ? item.avgPrice * item.quantity * exchangeRate
+                  : item.avgPrice * item.quantity;
+                return (
+                  <Paper
+                    key={item.id}
+                    sx={{ p: 2, border: '1px solid', borderColor: 'gray2', boxShadow: 'none' }}
+                  >
+                    <Stack spacing={1}>
+                      <Stack direction="row" alignItems="center" justifyContent="space-between">
+                        <Typography fontWeight={600} fontSize={20}>{item.name}</Typography>
+                        <Stack direction="row" alignItems="center" spacing={0.5}>
+                          {source ? (
+                            <IconButton
+                              size="small"
+                              onClick={() => setRedirectTarget({ name: item.name, source })}
+                              sx={{ color: 'gray6' }}
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          ) : (
+                            <Stack direction="row" spacing={0.5}>
+                              <IconButton size="small" onClick={() => openEdit(item)} sx={{ color: 'gray6' }}>
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                              <IconButton size="small" onClick={() => setDeleting(item)} sx={{ color: 'gray6' }}>
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Stack>
+                          )}
+                        </Stack>
+                      </Stack>
+                      <Stack spacing={0.25}>
+                        <Stack direction="row" justifyContent="space-between">
+                          <Typography sx={{ color: 'gray6', fontSize: '0.85rem' }}>보유 수량</Typography>
+                          <Typography sx={{ fontSize: '0.85rem' }}>{item.quantity.toLocaleString()}</Typography>
+                        </Stack>
+                        <Stack direction="row" justifyContent="space-between">
+                          <Typography sx={{ color: 'gray6', fontSize: '0.85rem' }}>매입가</Typography>
+                          <Typography sx={{ fontSize: '0.85rem' }}>{formatCurrency(item.avgPrice, item.currency)}</Typography>
+                        </Stack>
+                        <Stack direction="row" justifyContent="space-between">
+                          <Typography sx={{ color: 'gray6', fontSize: '0.85rem' }}>총 투자금액</Typography>
+                          <Typography sx={{ fontSize: '0.85rem', fontWeight: 600 }}>{formatCurrency(totalAmount, 'KRW')}</Typography>
+                        </Stack>
+                      </Stack>
+                    </Stack>
+                  </Paper>
+                );
+              })}
+            </Stack>
+          )}
+        </Box>
       </Stack>
 
       <Dialog open={!!deleting} onClose={() => setDeleting(null)}>

@@ -18,7 +18,7 @@ import { useUser } from '@/hooks/useUser';
 
 const MENU_ITEMS = [
   { label: '대시보드', path: '/dashboard', icon: <DashboardIcon fontSize="small" /> },
-  { label: '투자 내역', path: '/investments', icon: <ListAltIcon fontSize="small" /> },
+  { label: '투자내역 관리', path: '/investments', icon: <ListAltIcon fontSize="small" /> },
   { label: '주식 모으기', path: '/collect', icon: <SavingsIcon fontSize="small" /> },
   { label: '적립식 매수', path: '/dca', icon: <CalendarMonthIcon fontSize="small" /> },
   { label: '주식정보', path: '/market', icon: <ShowChartIcon fontSize="small" /> },

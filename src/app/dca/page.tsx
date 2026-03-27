@@ -91,7 +91,7 @@ export default function DcaPage() {
       <PageHeader />
 
       <Stack spacing={3} sx={{ alignItems: 'center' }}>
-        <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2} width={1}>
           <Box>
             <Typography variant="h5" fontWeight={700}>적립식 매수 일지</Typography>
             <Typography variant="body2" color="gray5" sx={{ mt: 0.5 }}>
@@ -102,10 +102,11 @@ export default function DcaPage() {
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => router.push('/dca/detail')}
+            sx={{ flexShrink: 0 }}
           >
             신규 등록
           </Button>
-        </Box>
+        </Stack>
 
         {loading ? (
           <Box sx={{ py: 8 }}>
@@ -128,7 +129,7 @@ export default function DcaPage() {
                   key={stock.ticker}
                   onClick={() => router.push(`/dca/detail?ticker=${stock.ticker}`)}
                   sx={{
-                    p: 3,
+                    p: { xs: 2, sm: 3 },
                     border: '1px solid',
                     borderColor: 'gray2',
                     boxShadow: 'none',
@@ -141,9 +142,9 @@ export default function DcaPage() {
                     },
                   }}
                 >
-                  <Stack spacing={1.5}>
+                  <Stack spacing={{ xs: 1, sm: 1.5 }}>
                     <Stack direction="row" alignItems="center" justifyContent="space-between">
-                      <Typography fontSize={30} fontWeight={600}>{stock.stockName}</Typography>
+                      <Typography sx={{ fontSize: { xs: 20, sm: 28 } }} fontWeight={600}>{stock.stockName}</Typography>
                       {overdueCount > 0 && (
                         <Box
                           sx={{
@@ -164,33 +165,33 @@ export default function DcaPage() {
                         </Box>
                       )}
                     </Stack>
-                    <Stack direction="column" spacing={0.5}>
+                    <Stack direction="column" spacing={0.25}>
                       {(() => {
                         const schedule = formatSchedule(stock.scheduleType, stock.scheduleValue, stock.scheduleQuantity);
                         return schedule ? (
-                          <Stack direction="row" alignItems="center">
-                            <Typography variant="body1" flex={1} fontSize="18px">투자날짜</Typography>
-                            <Typography variant="body1" flex={1} fontSize="18px" textAlign="right" color="primary.main" fontWeight={600}>
+                          <Stack direction="row" alignItems="center" justifyContent="space-between">
+                            <Typography variant="body1" flexShrink={0} sx={{ fontSize: { xs: '0.85rem', sm: '18px' } }}>투자날짜</Typography>
+                            <Typography variant="body1" sx={{ fontSize: { xs: '0.85rem', sm: '18px' } }} textAlign="right" color="primary.main" fontWeight={600} whiteSpace="nowrap">
                               {schedule}
                             </Typography>
                           </Stack>
                         ) : null;
                       })()}
                       <Stack direction="row" alignItems="center">
-                        <Typography variant="body1" flex={1} fontSize="18px">목표수량</Typography>
-                        <Typography variant="body1" flex={1} fontSize="18px" textAlign="right">
+                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.85rem', sm: '18px' } }}>목표수량</Typography>
+                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.85rem', sm: '18px' } }} textAlign="right">
                           {stock.targetQuantity.toLocaleString()}
                         </Typography>
                       </Stack>
                       <Stack direction="row" alignItems="center">
-                        <Typography variant="body1" flex={1} fontSize="18px" fontWeight={700}>현재수량</Typography>
-                        <Typography variant="body1" flex={1} fontSize="18px" fontWeight={700} textAlign="right">
+                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.85rem', sm: '18px' } }} fontWeight={700}>현재수량</Typography>
+                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.85rem', sm: '18px' } }} fontWeight={700} textAlign="right">
                           {stock.currentQuantity.toLocaleString()}
                         </Typography>
                       </Stack>
                       <Stack direction="row" alignItems="center">
-                        <Typography variant="body1" flex={1} fontSize="18px">달성률</Typography>
-                        <Typography variant="body1" flex={1} fontSize="18px" textAlign="right">{percent}%</Typography>
+                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.85rem', sm: '18px' } }}>달성률</Typography>
+                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.85rem', sm: '18px' } }} textAlign="right">{percent}%</Typography>
                       </Stack>
                     </Stack>
 
