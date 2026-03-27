@@ -43,14 +43,23 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const pathname = request.nextUrl.pathname;
+
+  // 로그인한 사용자가 랜딩(/) 또는 로그인 페이지 접근 시 대시보드로 리다이렉트
+  if (user && (pathname === '/' || pathname.startsWith('/login'))) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/dashboard';
+    return NextResponse.redirect(url);
+  }
+
+  // 비로그인 허용 경로
+  const publicPaths = ['/', '/login', '/auth', '/privacy', '/api'];
+  const isPublic = publicPaths.some((p) =>
+    pathname === p || pathname.startsWith(p + '/')
+  );
+
   // 로그인하지 않은 사용자를 로그인 페이지로 리다이렉트
-  if (
-    !user &&
-    !request.nextUrl.pathname.startsWith('/login') &&
-    !request.nextUrl.pathname.startsWith('/auth') &&
-    !request.nextUrl.pathname.startsWith('/api') &&
-    !request.nextUrl.pathname.startsWith('/privacy')
-  ) {
+  if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
