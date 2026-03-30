@@ -102,23 +102,23 @@ export default function CollectPage() {
                   }}
                 >
                   <Stack spacing={{ xs: 1, sm: 1.5 }}>
-                    <Typography sx={{ fontSize: { xs: 20, sm: 28 } }} fontWeight={600}>{stock.stockName}</Typography>
+                    <Typography sx={{ fontSize: { xs: 16, sm: 28 } }} fontWeight={600}>{stock.stockName}</Typography>
                     <Stack direction="column" spacing={0.25}>
                       <Stack direction="row" alignItems="center">
-                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.85rem', sm: '18px' } }}>목표수량</Typography>
-                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.85rem', sm: '18px' } }} textAlign="right">
+                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.75rem', sm: '18px' } }}>목표수량</Typography>
+                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.75rem', sm: '18px' } }} textAlign="right">
                           {stock.targetQuantity.toLocaleString()}
                         </Typography>
                       </Stack>
                       <Stack direction="row" alignItems="center">
-                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.85rem', sm: '18px' } }} fontWeight={700}>현재수량</Typography>
-                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.85rem', sm: '18px' } }} fontWeight={700} textAlign="right">
+                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.75rem', sm: '18px' } }} fontWeight={700}>현재수량</Typography>
+                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.75rem', sm: '18px' } }} fontWeight={700} textAlign="right">
                           {stock.currentQuantity.toLocaleString()}
                         </Typography>
                       </Stack>
                       <Stack direction="row" alignItems="center">
-                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.85rem', sm: '18px' } }}>달성률</Typography>
-                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.85rem', sm: '18px' } }} textAlign="right">{percent}%</Typography>
+                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.75rem', sm: '18px' } }}>달성률</Typography>
+                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.75rem', sm: '18px' } }} textAlign="right">{percent}%</Typography>
                       </Stack>
                     </Stack>
 

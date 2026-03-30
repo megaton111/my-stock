@@ -58,6 +58,16 @@ function getRowValue(row: RowData, key: SortKey): number | string {
 export default function InvestmentTable({ investments, prices, exchangeRate }: InvestmentTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('current');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+
+  const toggleCard = (ticker: string) => {
+    setExpandedCards((prev) => {
+      const next = new Set(prev);
+      if (next.has(ticker)) next.delete(ticker);
+      else next.add(ticker);
+      return next;
+    });
+  };
 
   const rows: RowData[] = useMemo(() =>
     investments.map((item) => {
@@ -93,8 +103,8 @@ export default function InvestmentTable({ investments, prices, exchangeRate }: I
     }
   };
 
-  const labelSx = { color: 'gray6', fontSize: '0.85rem' } as const;
-  const valueSx = { fontSize: '0.85rem', textAlign: 'right' } as const;
+  const labelSx = { color: 'gray6', fontSize: '0.75rem' } as const;
+  const valueSx = { fontSize: '0.75rem', textAlign: 'right' } as const;
 
   return (
     <>
@@ -149,52 +159,71 @@ export default function InvestmentTable({ investments, prices, exchangeRate }: I
       </TableContainer>
 
       {/* 모바일: 카드 리스트 */}
-      <Stack spacing={1} sx={{ display: { xs: 'flex', md: 'none' }, width: 1 }}>
-        {sortedRows.map(({ item, price, invested, current, profit, rate }) => (
-          <Paper
-            key={item.ticker}
-            sx={{ p: 2, border: '1px solid', borderColor: 'gray2', boxShadow: 'none' }}
-          >
-            <Stack spacing={1}>
-              <Typography fontWeight={600} fontSize={20}>{item.name}</Typography>
-              <Stack spacing={0.25}>
-                <Stack direction="row" justifyContent="space-between">
-                  <Typography sx={labelSx}>매입가</Typography>
-                  <Typography sx={valueSx}>{formatCurrency(item.avgPrice, item.currency)}</Typography>
+      <Box sx={{ display: { xs: 'grid', md: 'none' }, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1, width: 1 }}>
+        {sortedRows.map(({ item, price, invested, current, profit, rate }) => {
+          const expanded = expandedCards.has(item.ticker);
+          return (
+            <Paper
+              key={item.ticker}
+              sx={{ px: 1.5, py: 1, border: '1px solid', borderColor: 'gray2', boxShadow: 'none' }}
+            >
+              <Stack spacing={.5}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                  <Typography fontWeight={700} fontSize={16}>{item.name}</Typography>
+                  <IconButton
+                    size="small"
+                    onClick={() => toggleCard(item.ticker)}
+                    sx={{
+                      transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s',
+                    }}
+                  >
+                    <ExpandMoreIcon />
+                  </IconButton>
                 </Stack>
-                <Stack direction="row" justifyContent="space-between">
-                  <Typography sx={labelSx}>현재가</Typography>
-                  <Typography sx={{ ...valueSx, fontWeight: 700 }}>
-                    {price ? formatCurrency(price, item.currency) : '-'}
-                  </Typography>
+                <Stack spacing={0.25}>
+                  <Stack direction="row" justifyContent="space-between">
+                    <Typography sx={labelSx}>수익률</Typography>
+                    <Typography sx={{ ...valueSx, fontWeight: 700, color: profitColor(rate) }}>
+                      {price ? formatRate(rate) : '-'}
+                    </Typography>
+                  </Stack>
+                  <Stack direction="row" justifyContent="space-between">
+                    <Typography sx={labelSx}>수익금</Typography>
+                    <Typography sx={{ ...valueSx, fontWeight: 700, color: profitColor(profit) }}>
+                      {price ? formatProfit(profit) : '-'}
+                    </Typography>
+                  </Stack>
                 </Stack>
-                <Stack direction="row" justifyContent="space-between">
-                  <Typography sx={labelSx}>투자금액</Typography>
-                  <Typography sx={valueSx}>{formatKRW(invested)}</Typography>
-                </Stack>
-                <Stack direction="row" justifyContent="space-between">
-                  <Typography sx={labelSx}>평가금액</Typography>
-                  <Typography sx={{ ...valueSx, fontWeight: 700 }}>
-                    {price ? formatKRW(current) : '-'}
-                  </Typography>
-                </Stack>
-                <Stack direction="row" justifyContent="space-between">
-                  <Typography sx={labelSx}>수익률</Typography>
-                  <Typography sx={{ ...valueSx, fontWeight: 700, color: profitColor(rate) }}>
-                    {price ? formatRate(rate) : '-'}
-                  </Typography>
-                </Stack>
-                <Stack direction="row" justifyContent="space-between">
-                  <Typography sx={labelSx}>수익금</Typography>
-                  <Typography sx={{ ...valueSx, fontWeight: 700, color: profitColor(profit) }}>
-                    {price ? formatProfit(profit) : '-'}
-                  </Typography>
-                </Stack>
+                <Collapse in={expanded}>
+                  <Stack spacing={0.25} sx={{ pt: 0.5 }}>
+                    <Stack direction="row" justifyContent="space-between">
+                      <Typography sx={labelSx}>매입가</Typography>
+                      <Typography sx={valueSx}>{formatCurrency(item.avgPrice, item.currency)}</Typography>
+                    </Stack>
+                    <Stack direction="row" justifyContent="space-between">
+                      <Typography sx={labelSx}>현재가</Typography>
+                      <Typography sx={{ ...valueSx, fontWeight: 700 }}>
+                        {price ? formatCurrency(price, item.currency) : '-'}
+                      </Typography>
+                    </Stack>
+                    <Stack direction="row" justifyContent="space-between">
+                      <Typography sx={labelSx}>투자금액</Typography>
+                      <Typography sx={valueSx}>{formatKRW(invested)}</Typography>
+                    </Stack>
+                    <Stack direction="row" justifyContent="space-between">
+                      <Typography sx={labelSx}>평가금액</Typography>
+                      <Typography sx={{ ...valueSx, fontWeight: 700 }}>
+                        {price ? formatKRW(current) : '-'}
+                      </Typography>
+                    </Stack>
+                  </Stack>
+                </Collapse>
               </Stack>
-            </Stack>
-          </Paper>
-        ))}
-      </Stack>
+            </Paper>
+          );
+        })}
+      </Box>
     </>
   );
 }

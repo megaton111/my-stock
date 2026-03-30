@@ -256,11 +256,11 @@ export default function InvestmentsPage() {
                 return (
                   <Paper
                     key={item.id}
-                    sx={{ p: 2, border: '1px solid', borderColor: 'gray2', boxShadow: 'none' }}
+                    sx={{ px: 1.5, py: 1, border: '1px solid', borderColor: 'gray2', boxShadow: 'none' }}
                   >
                     <Stack spacing={1}>
                       <Stack direction="row" alignItems="center" justifyContent="space-between">
-                        <Typography fontWeight={600} fontSize={20}>{item.name}</Typography>
+                        <Typography fontWeight={700} fontSize={16}>{item.name}</Typography>
                         <Stack direction="row" alignItems="center" spacing={0.5}>
                           {source ? (
                             <IconButton
@@ -284,16 +284,16 @@ export default function InvestmentsPage() {
                       </Stack>
                       <Stack spacing={0.25}>
                         <Stack direction="row" justifyContent="space-between">
-                          <Typography sx={{ color: 'gray6', fontSize: '0.85rem' }}>보유 수량</Typography>
-                          <Typography sx={{ fontSize: '0.85rem' }}>{item.quantity.toLocaleString()}</Typography>
+                          <Typography sx={{ color: 'gray6', fontSize: '0.75rem' }}>보유 수량</Typography>
+                          <Typography sx={{ fontSize: '0.75rem' }}>{item.quantity.toLocaleString()}</Typography>
                         </Stack>
                         <Stack direction="row" justifyContent="space-between">
-                          <Typography sx={{ color: 'gray6', fontSize: '0.85rem' }}>매입가</Typography>
-                          <Typography sx={{ fontSize: '0.85rem' }}>{formatCurrency(item.avgPrice, item.currency)}</Typography>
+                          <Typography sx={{ color: 'gray6', fontSize: '0.75rem' }}>매입가</Typography>
+                          <Typography sx={{ fontSize: '0.75rem' }}>{formatCurrency(item.avgPrice, item.currency)}</Typography>
                         </Stack>
                         <Stack direction="row" justifyContent="space-between">
-                          <Typography sx={{ color: 'gray6', fontSize: '0.85rem' }}>총 투자금액</Typography>
-                          <Typography sx={{ fontSize: '0.85rem', fontWeight: 600 }}>{formatCurrency(totalAmount, 'KRW')}</Typography>
+                          <Typography sx={{ color: 'gray6', fontSize: '0.75rem' }}>총 투자금액</Typography>
+                          <Typography sx={{ fontSize: '0.75rem', fontWeight: 600 }}>{formatCurrency(totalAmount, 'KRW')}</Typography>
                         </Stack>
                       </Stack>
                     </Stack>

@@ -144,7 +144,7 @@ export default function DcaPage() {
                 >
                   <Stack spacing={{ xs: 1, sm: 1.5 }}>
                     <Stack direction="row" alignItems="center" justifyContent="space-between">
-                      <Typography sx={{ fontSize: { xs: 20, sm: 28 } }} fontWeight={600}>{stock.stockName}</Typography>
+                      <Typography sx={{ fontSize: { xs: 16, sm: 28 } }} fontWeight={600}>{stock.stockName}</Typography>
                       {overdueCount > 0 && (
                         <Box
                           sx={{
@@ -170,28 +170,28 @@ export default function DcaPage() {
                         const schedule = formatSchedule(stock.scheduleType, stock.scheduleValue, stock.scheduleQuantity);
                         return schedule ? (
                           <Stack direction="row" alignItems="center" justifyContent="space-between">
-                            <Typography variant="body1" flexShrink={0} sx={{ fontSize: { xs: '0.85rem', sm: '18px' } }}>투자날짜</Typography>
-                            <Typography variant="body1" sx={{ fontSize: { xs: '0.85rem', sm: '18px' } }} textAlign="right" color="primary.main" fontWeight={600} whiteSpace="nowrap">
+                            <Typography variant="body1" flexShrink={0} sx={{ fontSize: { xs: '0.75rem', sm: '18px' } }}>투자날짜</Typography>
+                            <Typography variant="body1" sx={{ fontSize: { xs: '0.75rem', sm: '18px' } }} textAlign="right" color="primary.main" fontWeight={600} whiteSpace="nowrap">
                               {schedule}
                             </Typography>
                           </Stack>
                         ) : null;
                       })()}
                       <Stack direction="row" alignItems="center">
-                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.85rem', sm: '18px' } }}>목표수량</Typography>
-                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.85rem', sm: '18px' } }} textAlign="right">
+                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.75rem', sm: '18px' } }}>목표수량</Typography>
+                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.75rem', sm: '18px' } }} textAlign="right">
                           {stock.targetQuantity.toLocaleString()}
                         </Typography>
                       </Stack>
                       <Stack direction="row" alignItems="center">
-                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.85rem', sm: '18px' } }} fontWeight={700}>현재수량</Typography>
-                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.85rem', sm: '18px' } }} fontWeight={700} textAlign="right">
+                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.75rem', sm: '18px' } }} fontWeight={700}>현재수량</Typography>
+                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.75rem', sm: '18px' } }} fontWeight={700} textAlign="right">
                           {stock.currentQuantity.toLocaleString()}
                         </Typography>
                       </Stack>
                       <Stack direction="row" alignItems="center">
-                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.85rem', sm: '18px' } }}>달성률</Typography>
-                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.85rem', sm: '18px' } }} textAlign="right">{percent}%</Typography>
+                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.75rem', sm: '18px' } }}>달성률</Typography>
+                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.75rem', sm: '18px' } }} textAlign="right">{percent}%</Typography>
                       </Stack>
                     </Stack>
 
