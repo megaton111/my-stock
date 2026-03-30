@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Box, Paper, Stack, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, Chip } from '@mui/material';
+import { Box, Paper, Stack, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, Chip, IconButton, Collapse } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Investment } from '@/types/investment';
 import { investedAmount, currentValue } from '@/utils/calculator';
 import { formatCurrency, formatKRW, formatRate, formatProfit, profitColor } from '@/utils/format';

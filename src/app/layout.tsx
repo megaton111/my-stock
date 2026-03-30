@@ -25,6 +25,9 @@ export const metadata: Metadata = {
     locale: "ko_KR",
     type: "website",
   },
+  icons: {
+    icon: "/favicon.png",
+  },
   metadataBase: new URL("https://stocktracker.co.kr"),
   alternates: {
     canonical: "/",
