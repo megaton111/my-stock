@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Button, Stack, ToggleButton, ToggleButtonGroup,
-  MenuItem,
+  MenuItem, CircularProgress,
 } from '@mui/material';
 import { Investment, InvestmentInput } from '@/types/investment';
 
@@ -38,9 +38,12 @@ function getCategoryConfig(category: string) {
 
 export default function InvestmentFormDialog({ open, onClose, onSubmit, initial }: InvestmentFormDialogProps) {
   const [form, setForm] = useState<InvestmentInput>(emptyForm);
+  const [tickerError, setTickerError] = useState('');
+  const [validating, setValidating] = useState(false);
 
   useEffect(() => {
     if (open) {
+      setTickerError('');
       setForm(initial ? {
         name: initial.name,
         ticker: stripSuffix(initial.ticker, initial.category),
@@ -53,9 +56,9 @@ export default function InvestmentFormDialog({ open, onClose, onSubmit, initial 
   }, [open, initial]);
 
   const handleChange = (field: keyof InvestmentInput, value: string | number) => {
+    if (field === 'ticker' || field === 'category') setTickerError('');
     setForm((prev) => {
       const next = { ...prev, [field]: value };
-      // 카테고리 변경 시 통화 자동 설정
       if (field === 'category') {
         const config = getCategoryConfig(value as string);
         next.currency = config.currency;
@@ -64,13 +67,33 @@ export default function InvestmentFormDialog({ open, onClose, onSubmit, initial 
     });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const submitted = { ...form };
     const config = getCategoryConfig(submitted.category);
-    // 접미사 자동 추가 (이미 붙어있으면 중복 방지)
     if (config.suffix && !submitted.ticker.endsWith(config.suffix)) {
       submitted.ticker = `${submitted.ticker}${config.suffix}`;
     }
+
+    // 신규 추가 시에만 티커 유효성 검증 (수정 시에는 이미 등록된 종목이므로 스킵)
+    if (!initial) {
+      setValidating(true);
+      try {
+        const res = await fetch(`/api/stock/price?symbols=${encodeURIComponent(submitted.ticker)}`);
+        const data = await res.json();
+        const result = Array.isArray(data) ? data[0] : null;
+        if (!result || result.error || !result.price) {
+          setTickerError('시세를 불러올 수 없는 티커입니다. 입력값을 확인해주세요.');
+          setValidating(false);
+          return;
+        }
+      } catch {
+        setTickerError('티커 검증 중 오류가 발생했습니다. 다시 시도해주세요.');
+        setValidating(false);
+        return;
+      }
+      setValidating(false);
+    }
+
     onSubmit(submitted);
     onClose();
   };
@@ -101,7 +124,8 @@ export default function InvestmentFormDialog({ open, onClose, onSubmit, initial 
               fullWidth
               size="small"
               placeholder={config.placeholder}
-              helperText={config.hint || undefined}
+              error={!!tickerError}
+              helperText={tickerError || config.hint || undefined}
             />
           </Stack>
 
@@ -154,8 +178,8 @@ export default function InvestmentFormDialog({ open, onClose, onSubmit, initial 
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2.5 }}>
         <Button onClick={onClose} color="inherit">취소</Button>
-        <Button onClick={handleSubmit} variant="contained" disabled={!isValid}>
-          {initial ? '수정' : '추가'}
+        <Button onClick={handleSubmit} variant="contained" disabled={!isValid || validating}>
+          {validating ? <CircularProgress size={20} color="inherit" /> : initial ? '수정' : '추가'}
         </Button>
       </DialogActions>
     </Dialog>
