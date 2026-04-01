@@ -9,7 +9,6 @@ import {
   Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
@@ -338,6 +337,41 @@ function DcaDetailContent() {
     }
   };
 
+  const handleSkip = async () => {
+    if (!user) return;
+    const name = isNew ? stockName : (fetchedStockName || ticker);
+    const target = isNew ? Number(targetQuantity) : fetchedTargetQuantity;
+
+    try {
+      const res = await fetch('/api/dca/entries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          stockName: name,
+          ticker,
+          targetQuantity: target,
+          date: newDate,
+          amount: 0,
+          quantity: 0,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        setSnackbar(err.error || '처리에 실패했습니다.');
+        return;
+      }
+      const created = await res.json();
+      setEntries((prev) => [...prev, created]);
+      setAdding(false);
+      setNewDate(getToday());
+      setNewAmount('');
+      setNewQuantity('');
+    } catch (err) {
+      console.error('Failed to skip entry:', err);
+    }
+  };
+
   const handleAddCancel = () => {
     setAdding(false);
     setNewDate(getToday());
@@ -660,17 +694,6 @@ function DcaDetailContent() {
                 >
                   투자 종료
                 </Button>
-                <Button
-                  variant="contained"
-                  startIcon={<AddIcon />}
-                  onClick={() => {
-                    const qty = isNew ? scheduleQuantity : (fetchedScheduleQuantity ? String(fetchedScheduleQuantity) : '');
-                    setNewQuantity(qty);
-                    setAdding(true);
-                  }}
-                >
-                  매수 추가
-                </Button>
               </Stack>
             )}
           </Stack>
@@ -681,7 +704,7 @@ function DcaDetailContent() {
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: { xs: '1fr 1fr', md: '1fr 1fr 1fr 1fr 1fr' },
+              gridTemplateColumns: { xs: '1fr', md: '1fr 1fr 1fr 1fr 1fr' },
               gap: 1,
             }}
           >
@@ -705,7 +728,7 @@ function DcaDetailContent() {
               <Paper
                 key={item.label}
                 sx={{
-                  p: 2.5,
+                  p: 1.5,
                   border: '1px solid',
                   borderColor: 'gray2',
                   boxShadow: 'none',
@@ -715,7 +738,7 @@ function DcaDetailContent() {
                   {item.label}
                 </Typography>
                 <Typography
-                  fontSize={20}
+                  fontSize={16}
                   fontWeight={700}
                   color={item.color ?? 'text.primary'}
                 >
@@ -724,7 +747,7 @@ function DcaDetailContent() {
                 {item.sub && (
                   <Typography
                     variant="body2"
-                    fontWeight={600}
+                    fontWeight={500}
                     color={item.color ?? 'text.primary'}
                     sx={{ mt: 0.25 }}
                   >
@@ -824,71 +847,76 @@ function DcaDetailContent() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {/* 추가 입력 행 */}
-                {adding && (
-                  <TableRow sx={{ bgcolor: 'rgba(25, 118, 210, 0.04)' }}>
-                    <TableCell>
-                      <TextField
-                        size="small"
-                        type="date"
-                        value={newDate}
-                        onChange={(e) => setNewDate(e.target.value)}
-                        slotProps={{ htmlInput: { style: { textAlign: 'left' } } }}
-                        sx={{ width: 200 }}
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <TextField
-                        size="small"
-                        type="number"
-                        placeholder="매수금액"
-                        value={newAmount}
-                        onChange={(e) => setNewAmount(e.target.value)}
-                        autoFocus
-                        slotProps={{ htmlInput: { min: 0, step: 'any', style: { textAlign: 'right' } } }}
-                        sx={{ width: 120 }}
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <TextField
-                        size="small"
-                        type="number"
-                        placeholder="수량"
-                        value={newQuantity}
-                        onChange={(e) => setNewQuantity(e.target.value)}
-                        slotProps={{ htmlInput: { min: 0, step: 'any', style: { textAlign: 'right' } } }}
-                        sx={{ width: 100 }}
-                      />
-                    </TableCell>
-                    <TableCell align="right" sx={{ color: 'gray5' }}>
-                      {addPreview ? formatCurrency(addPreview.price, currency) : '-'}
-                    </TableCell>
-                    <TableCell align="right" sx={{ color: 'gray5', fontWeight: 600 }}>
-                      {addPreview ? formatCurrency(addPreview.cumAmount, currency) : '-'}
-                    </TableCell>
-                    <TableCell align="right" sx={{ color: 'gray5', fontWeight: 600 }}>
-                      {addPreview ? addPreview.cumQuantity.toLocaleString() : '-'}
-                    </TableCell>
-                    <TableCell align="right" sx={{ color: 'gray5', fontWeight: 600 }}>
-                      {addPreview ? formatCurrency(addPreview.cumAvgPrice, currency) : '-'}
-                    </TableCell>
-                    <TableCell align="center">
-                      <Stack direction="row" spacing={0.5} justifyContent="center">
-                        <IconButton size="small" onClick={handleAddConfirm} color="primary" disabled={!addPreview}>
-                          <CheckIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton size="small" onClick={handleAddCancel} sx={{ color: 'gray6' }}>
-                          <CloseIcon fontSize="small" />
-                        </IconButton>
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                )}
-
-                {/* 미입력 스케줄 행 */}
-                {pendingDates.slice().reverse()
-                  .filter((date) => !(adding && newDate === date))
-                  .map((date) => (
+                {/* 미입력 스케줄 행 (클릭한 날짜는 입력 폼으로 대체) */}
+                {pendingDates.slice().reverse().map((date) =>
+                  adding && newDate === date ? (
+                    <TableRow key={`adding-${date}`} sx={{ bgcolor: 'rgba(25, 118, 210, 0.04)' }}>
+                      <TableCell>
+                        <TextField
+                          size="small"
+                          type="date"
+                          value={newDate}
+                          onChange={(e) => setNewDate(e.target.value)}
+                          slotProps={{ htmlInput: { style: { textAlign: 'left' } } }}
+                          sx={{ width: 200 }}
+                        />
+                      </TableCell>
+                      <TableCell align="right">
+                        <TextField
+                          size="small"
+                          type="number"
+                          placeholder="매수금액"
+                          value={newAmount}
+                          onChange={(e) => setNewAmount(e.target.value)}
+                          autoFocus
+                          slotProps={{ htmlInput: { min: 0, step: 'any', style: { textAlign: 'right' } } }}
+                          sx={{ width: 120 }}
+                        />
+                      </TableCell>
+                      <TableCell align="right">
+                        <TextField
+                          size="small"
+                          type="number"
+                          placeholder="수량"
+                          value={newQuantity}
+                          onChange={(e) => setNewQuantity(e.target.value)}
+                          slotProps={{ htmlInput: { min: 0, step: 'any', style: { textAlign: 'right' } } }}
+                          sx={{ width: 100 }}
+                        />
+                      </TableCell>
+                      <TableCell align="right" sx={{ color: 'gray5' }}>
+                        {addPreview ? formatCurrency(addPreview.price, currency) : '-'}
+                      </TableCell>
+                      <TableCell align="right" sx={{ color: 'gray5', fontWeight: 600 }}>
+                        {addPreview ? formatCurrency(addPreview.cumAmount, currency) : '-'}
+                      </TableCell>
+                      <TableCell align="right" sx={{ color: 'gray5', fontWeight: 600 }}>
+                        {addPreview ? addPreview.cumQuantity.toLocaleString() : '-'}
+                      </TableCell>
+                      <TableCell align="right" sx={{ color: 'gray5', fontWeight: 600 }}>
+                        {addPreview ? formatCurrency(addPreview.cumAvgPrice, currency) : '-'}
+                      </TableCell>
+                      <TableCell align="center">
+                        <Stack direction="row" spacing={0.5} justifyContent="center" alignItems="center">
+                          <IconButton size="small" onClick={handleAddConfirm} color="primary" disabled={!addPreview}>
+                            <CheckIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton size="small" onClick={handleAddCancel} sx={{ color: 'gray6' }}>
+                            <CloseIcon fontSize="small" />
+                          </IconButton>
+                          <Button
+                            size="small"
+                            variant="text"
+                            color="inherit"
+                            onClick={handleSkip}
+                            sx={{ color: 'gray5', fontSize: '0.75rem', minWidth: 'auto', whiteSpace: 'nowrap' }}
+                          >
+                            매수 못함
+                          </Button>
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
                     <TableRow
                       key={`pending-${date}`}
                       sx={{
@@ -917,7 +945,8 @@ function DcaDetailContent() {
                         </Typography>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ),
+                )}
 
                 {/* 기존 데이터 */}
                 {rows.length === 0 && !adding && pendingDates.length === 0 ? (
@@ -982,6 +1011,21 @@ function DcaDetailContent() {
                               <CloseIcon fontSize="small" />
                             </IconButton>
                           </Stack>
+                        </TableCell>
+                      </TableRow>
+                    ) : entry.amount === 0 && entry.quantity === 0 ? (
+                      <TableRow key={entry.id} sx={{ opacity: 0.45, '&:last-child td, &:last-child th': { border: 0 } }}>
+                        <TableCell>{entry.date}</TableCell>
+                        <TableCell align="right" sx={{ color: 'gray5' }}>-</TableCell>
+                        <TableCell align="right" sx={{ color: 'gray5' }}>-</TableCell>
+                        <TableCell align="right" sx={{ color: 'gray5' }}>-</TableCell>
+                        <TableCell align="right" sx={{ color: 'gray5' }}>-</TableCell>
+                        <TableCell align="right" sx={{ color: 'gray5' }}>-</TableCell>
+                        <TableCell align="right" sx={{ color: 'gray5' }}>-</TableCell>
+                        <TableCell align="center">
+                          <Typography variant="caption" color="text.disabled" fontWeight={600}>
+                            매수 못함
+                          </Typography>
                         </TableCell>
                       </TableRow>
                     ) : (
