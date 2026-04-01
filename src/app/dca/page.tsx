@@ -3,10 +3,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Container, Typography, Box, Paper, Stack, CircularProgress, Button,
+  Container, Typography, Box, Paper, Stack, CircularProgress, Button, IconButton, Collapse,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PageHeader from '@/components/PageHeader';
 import { useUser } from '@/hooks/useUser';
 
@@ -68,6 +69,16 @@ export default function DcaPage() {
   const { user } = useUser();
   const [stocks, setStocks] = useState<DcaStock[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+
+  const toggleCard = (ticker: string) => {
+    setExpandedCards((prev) => {
+      const next = new Set(prev);
+      if (next.has(ticker)) next.delete(ticker);
+      else next.add(ticker);
+      return next;
+    });
+  };
 
   const fetchStocks = useCallback(async () => {
     if (!user) return;
@@ -124,12 +135,15 @@ export default function DcaPage() {
             {stocks.map((stock) => {
               const percent = getProgressPercent(stock.currentQuantity, stock.targetQuantity);
               const overdueCount = getOverdueCount(stock.scheduleType, stock.scheduleValue, stock.lastEntryDate);
+              const expanded = expandedCards.has(stock.ticker);
+              const schedule = formatSchedule(stock.scheduleType, stock.scheduleValue, stock.scheduleQuantity);
               return (
                 <Paper
                   key={stock.ticker}
                   onClick={() => router.push(`/dca/detail?ticker=${stock.ticker}`)}
                   sx={{
-                    p: { xs: 2, sm: 3 },
+                    px: { xs: 1.5, sm: 3 },
+                    py: { xs: 1, sm: 3 },
                     border: '1px solid',
                     borderColor: 'gray2',
                     boxShadow: 'none',
@@ -142,56 +156,46 @@ export default function DcaPage() {
                     },
                   }}
                 >
-                  <Stack spacing={{ xs: 1, sm: 1.5 }}>
+                  <Stack spacing={{ xs: 0.5, sm: 1.5 }}>
                     <Stack direction="row" alignItems="center" justifyContent="space-between">
-                      <Typography sx={{ fontSize: { xs: 16, sm: 28 } }} fontWeight={600}>{stock.stockName}</Typography>
-                      {overdueCount > 0 && (
-                        <Box
-                          sx={{
-                            px: 1,
-                            py: 0.25,
-                            bgcolor: 'rgba(255, 152, 0, 0.1)',
-                            borderRadius: 1,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 0.5,
-                            flexShrink: 0,
-                          }}
-                        >
-                          <WarningAmberIcon sx={{ fontSize: 14, color: 'warning.main' }} />
-                          <Typography variant="caption" color="warning.dark" fontWeight={600} lineHeight={1}>
-                            {overdueCount}건 미입력
-                          </Typography>
-                        </Box>
-                      )}
+                      <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 0 }}>
+                        <Typography sx={{ fontSize: { xs: 16, sm: 28 } }} fontWeight={700}>{stock.stockName}</Typography>
+                        {overdueCount > 0 && (
+                          <Box
+                            sx={{
+                              px: 1,
+                              py: 0.25,
+                              bgcolor: 'rgba(255, 152, 0, 0.1)',
+                              borderRadius: 1,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 0.5,
+                              flexShrink: 0,
+                            }}
+                          >
+                            <WarningAmberIcon sx={{ fontSize: 14, color: 'warning.main' }} />
+                            <Typography variant="caption" color="warning.dark" fontWeight={600} lineHeight={1}>
+                              {overdueCount}건 미입력
+                            </Typography>
+                          </Box>
+                        )}
+                      </Stack>
+                      <IconButton
+                        size="small"
+                        onClick={(e) => { e.stopPropagation(); toggleCard(stock.ticker); }}
+                        sx={{
+                          display: { xs: 'inline-flex', sm: 'none' },
+                          transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                          transition: 'transform 0.2s',
+                        }}
+                      >
+                        <ExpandMoreIcon />
+                      </IconButton>
                     </Stack>
                     <Stack direction="column" spacing={0.25}>
-                      {(() => {
-                        const schedule = formatSchedule(stock.scheduleType, stock.scheduleValue, stock.scheduleQuantity);
-                        return schedule ? (
-                          <Stack direction="row" alignItems="center" justifyContent="space-between">
-                            <Typography variant="body1" flexShrink={0} sx={{ fontSize: { xs: '0.75rem', sm: '18px' } }}>투자날짜</Typography>
-                            <Typography variant="body1" sx={{ fontSize: { xs: '0.75rem', sm: '18px' } }} textAlign="right" color="primary.main" fontWeight={600} whiteSpace="nowrap">
-                              {schedule}
-                            </Typography>
-                          </Stack>
-                        ) : null;
-                      })()}
                       <Stack direction="row" alignItems="center">
-                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.75rem', sm: '18px' } }}>목표수량</Typography>
-                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.75rem', sm: '18px' } }} textAlign="right">
-                          {stock.targetQuantity.toLocaleString()}
-                        </Typography>
-                      </Stack>
-                      <Stack direction="row" alignItems="center">
-                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.75rem', sm: '18px' } }} fontWeight={700}>현재수량</Typography>
-                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.75rem', sm: '18px' } }} fontWeight={700} textAlign="right">
-                          {stock.currentQuantity.toLocaleString()}
-                        </Typography>
-                      </Stack>
-                      <Stack direction="row" alignItems="center">
-                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.75rem', sm: '18px' } }}>달성률</Typography>
-                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.75rem', sm: '18px' } }} textAlign="right">{percent}%</Typography>
+                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.75rem', sm: '18px' }, color: { xs: 'gray6', sm: 'inherit' } }}>달성률</Typography>
+                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.75rem', sm: '18px' } }} fontWeight={700} textAlign="right">{percent}%</Typography>
                       </Stack>
                     </Stack>
 
@@ -206,6 +210,58 @@ export default function DcaPage() {
                           transition: 'width 0.3s ease',
                         }}
                       />
+                    </Box>
+
+                    {/* 모바일: 펼침 영역 */}
+                    <Collapse in={expanded} sx={{ display: { xs: 'block', sm: 'none' } }}>
+                      <Stack spacing={0.25} sx={{ pt: 0.5 }}>
+                        {schedule && (
+                          <Stack direction="row" alignItems="center" justifyContent="space-between">
+                            <Typography flexShrink={0} sx={{ fontSize: '0.75rem', color: 'gray6' }}>투자날짜</Typography>
+                            <Typography sx={{ fontSize: '0.75rem' }} textAlign="right" color="primary.main" fontWeight={600} whiteSpace="nowrap">
+                              {schedule}
+                            </Typography>
+                          </Stack>
+                        )}
+                        <Stack direction="row" alignItems="center">
+                          <Typography flex={1} sx={{ fontSize: '0.75rem', color: 'gray6' }}>목표수량</Typography>
+                          <Typography flex={1} sx={{ fontSize: '0.75rem' }} textAlign="right">
+                            {stock.targetQuantity.toLocaleString()}
+                          </Typography>
+                        </Stack>
+                        <Stack direction="row" alignItems="center">
+                          <Typography flex={1} sx={{ fontSize: '0.75rem', color: 'gray6' }}>현재수량</Typography>
+                          <Typography flex={1} sx={{ fontSize: '0.75rem' }} fontWeight={700} textAlign="right">
+                            {stock.currentQuantity.toLocaleString()}
+                          </Typography>
+                        </Stack>
+                      </Stack>
+                    </Collapse>
+
+                    {/* 데스크탑: 항상 표시 */}
+                    <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+                      <Stack spacing={0.25}>
+                        {schedule && (
+                          <Stack direction="row" alignItems="center" justifyContent="space-between">
+                            <Typography variant="body1" flexShrink={0} sx={{ fontSize: '18px' }}>투자날짜</Typography>
+                            <Typography variant="body1" sx={{ fontSize: '18px' }} textAlign="right" color="primary.main" fontWeight={600} whiteSpace="nowrap">
+                              {schedule}
+                            </Typography>
+                          </Stack>
+                        )}
+                        <Stack direction="row" alignItems="center">
+                          <Typography variant="body1" flex={1} sx={{ fontSize: '18px' }}>목표수량</Typography>
+                          <Typography variant="body1" flex={1} sx={{ fontSize: '18px' }} textAlign="right">
+                            {stock.targetQuantity.toLocaleString()}
+                          </Typography>
+                        </Stack>
+                        <Stack direction="row" alignItems="center">
+                          <Typography variant="body1" flex={1} sx={{ fontSize: '18px' }} fontWeight={700}>현재수량</Typography>
+                          <Typography variant="body1" flex={1} sx={{ fontSize: '18px' }} fontWeight={700} textAlign="right">
+                            {stock.currentQuantity.toLocaleString()}
+                          </Typography>
+                        </Stack>
+                      </Stack>
                     </Box>
 
                   </Stack>

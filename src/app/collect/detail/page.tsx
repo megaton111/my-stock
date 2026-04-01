@@ -544,7 +544,7 @@ function CollectDetailContent() {
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: { xs: '1fr 1fr', md: '1fr 1fr 1fr 1fr 1fr' },
+              gridTemplateColumns: { xs: '1fr', md: '1fr 1fr 1fr 1fr 1fr' },
               gap: 1,
             }}
           >
@@ -568,7 +568,7 @@ function CollectDetailContent() {
               <Paper
                 key={item.label}
                 sx={{
-                  p: 2.5,
+                  p: 1.5,
                   border: '1px solid',
                   borderColor: 'gray2',
                   boxShadow: 'none',
@@ -578,7 +578,7 @@ function CollectDetailContent() {
                   {item.label}
                 </Typography>
                 <Typography
-                  fontSize={20}
+                  fontSize={16}
                   fontWeight={700}
                   color={item.color ?? 'text.primary'}
                 >
@@ -587,7 +587,7 @@ function CollectDetailContent() {
                 {item.sub && (
                   <Typography
                     variant="body2"
-                    fontWeight={600}
+                    fontWeight={500}
                     color={item.color ?? 'text.primary'}
                     sx={{ mt: 0.25 }}
                   >
