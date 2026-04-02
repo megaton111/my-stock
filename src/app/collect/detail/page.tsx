@@ -141,7 +141,6 @@ function CollectDetailContent() {
   const [snackbar, setSnackbar] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [duplicateMsg, setDuplicateMsg] = useState<string | null>(null);
-  const [tickerError, setTickerError] = useState(false);
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
 
   // 기존 종목: DB에서 매수 기록 로드
@@ -189,28 +188,18 @@ function CollectDetailContent() {
   const handleRegister = async () => {
     if (!stockName.trim() || !stockTicker.trim() || !targetQuantity.trim() || !user) return;
 
-    // 이미 등록된 종목인지 확인
-    try {
-      const res = await fetch(`/api/collect?userId=${user.id}`);
-      const existing = await res.json();
-      if (Array.isArray(existing) && existing.some((item: { ticker: string }) => item.ticker === fullTicker)) {
-        setDuplicateMsg(`${stockName}(${fullTicker})은 이미 주식 모으기에 등록된 종목입니다.`);
-        return;
-      }
-    } catch {
-      // 조회 실패 시 등록 진행
+    const [duplicateResult, priceResult] = await Promise.all([
+      fetch(`/api/collect?userId=${user.id}`).then(r => r.json()).catch(() => null),
+      fetch(`/api/stock/price?symbols=${encodeURIComponent(fullTicker)}`).then(r => r.json()).catch(() => null),
+    ]);
+
+    if (Array.isArray(duplicateResult) && duplicateResult.some((item: { ticker: string }) => item.ticker === fullTicker)) {
+      setDuplicateMsg(`${stockName}(${fullTicker})은 이미 주식 모으기에 등록된 종목입니다.`);
+      return;
     }
 
-    // 티커 유효성 검증
-    try {
-      const priceRes = await fetch(`/api/stock/price?symbols=${encodeURIComponent(fullTicker)}`);
-      const priceData = await priceRes.json();
-      const result = Array.isArray(priceData) ? priceData[0] : null;
-      if (!result || result.error || !result.price) {
-        setTickerError(true);
-        return;
-      }
-    } catch {
+    const priceItem = Array.isArray(priceResult) ? priceResult[0] : null;
+    if (!priceItem || priceItem.error || !priceItem.price) {
       setSnackbar('티커를 확인해주세요');
       return;
     }
@@ -885,16 +874,6 @@ function CollectDetailContent() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDuplicateMsg(null)} variant="contained">확인</Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={tickerError} onClose={() => setTickerError(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>티커 오류</DialogTitle>
-        <DialogContent>
-          <DialogContentText>티커를 확인해주세요</DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setTickerError(false)} variant="contained">확인</Button>
         </DialogActions>
       </Dialog>
 
