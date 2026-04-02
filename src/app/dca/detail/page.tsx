@@ -262,6 +262,36 @@ function DcaDetailContent() {
       // 조회 실패 시 등록 진행
     }
 
+    // DB에 초기 레코드 생성 (메인 페이지에서 조회되도록)
+    try {
+      const res = await fetch('/api/dca/entries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          stockName: stockName.trim(),
+          ticker: fullTicker,
+          targetQuantity: Number(targetQuantity),
+          date: getToday(),
+          amount: 0,
+          quantity: 0,
+          scheduleType,
+          scheduleValue,
+          scheduleQuantity: scheduleQuantity ? Number(scheduleQuantity) : null,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        setSnackbar(err.error || '등록에 실패했습니다.');
+        return;
+      }
+      const created = await res.json();
+      setEntries([created]);
+    } catch {
+      setSnackbar('등록에 실패했습니다.');
+      return;
+    }
+
     setRegistered(true);
     if (scheduleQuantity) setNewQuantity(scheduleQuantity);
     setAdding(true);
@@ -297,6 +327,31 @@ function DcaDetailContent() {
     // 같은 날짜에 이미 등록된 기록이 있는지 확인
     const duplicate = entries.find((e) => e.date === newDate);
     if (duplicate) {
+      // 초기 등록 레코드(amount=0, quantity=0)면 업데이트로 대체
+      if (duplicate.amount === 0 && duplicate.quantity === 0) {
+        try {
+          const res = await fetch(`/api/dca/entries/${duplicate.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date: newDate, amount, quantity }),
+          });
+          if (!res.ok) {
+            const err = await res.json();
+            setSnackbar(err.error || '매수 기록 수정에 실패했습니다.');
+            return;
+          }
+          const updated = await res.json();
+          setEntries((prev) => prev.map((e) => (e.id === duplicate.id ? updated : e)));
+          setAdding(false);
+          setNewDate(getToday());
+          setNewAmount('');
+          setNewQuantity('');
+          return;
+        } catch (err) {
+          console.error('Failed to update entry:', err);
+          return;
+        }
+      }
       setSnackbar(`${newDate} 날짜에 이미 매수 기록이 있습니다. 하루에 한 번만 등록할 수 있습니다.`);
       return;
     }
@@ -1011,6 +1066,35 @@ function DcaDetailContent() {
                               <CloseIcon fontSize="small" />
                             </IconButton>
                           </Stack>
+                        </TableCell>
+                      </TableRow>
+                    ) : entry.amount === 0 && entry.quantity === 0 && entry.date === getToday() ? (
+                      <TableRow
+                        key={entry.id}
+                        sx={{
+                          bgcolor: 'rgba(255, 167, 38, 0.08)',
+                          cursor: isBusy ? 'default' : 'pointer',
+                          '&:hover': isBusy ? {} : { bgcolor: 'rgba(255, 167, 38, 0.15)' },
+                        }}
+                        onClick={() => {
+                          if (isBusy) return;
+                          setNewDate(entry.date);
+                          const qty = isNew ? scheduleQuantity : (fetchedScheduleQuantity ? String(fetchedScheduleQuantity) : '');
+                          setNewQuantity(qty);
+                          setAdding(true);
+                        }}
+                      >
+                        <TableCell>{entry.date}</TableCell>
+                        <TableCell align="right" sx={{ color: 'gray4' }}>-</TableCell>
+                        <TableCell align="right" sx={{ color: 'gray4' }}>-</TableCell>
+                        <TableCell align="right" sx={{ color: 'gray4' }}>-</TableCell>
+                        <TableCell align="right" sx={{ color: 'gray4' }}>-</TableCell>
+                        <TableCell align="right" sx={{ color: 'gray4' }}>-</TableCell>
+                        <TableCell align="right" sx={{ color: 'gray4' }}>-</TableCell>
+                        <TableCell align="center">
+                          <Typography variant="caption" color="warning.main" fontWeight={600}>
+                            미입력
+                          </Typography>
                         </TableCell>
                       </TableRow>
                     ) : entry.amount === 0 && entry.quantity === 0 ? (
