@@ -26,6 +26,7 @@ interface DcaEntry {
   date: string;
   amount: number;
   quantity: number;
+  scheduleType?: string | null;
 }
 
 interface DcaRow extends DcaEntry {
@@ -124,12 +125,18 @@ function getPendingScheduleDates(
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const entryDates = new Set(entries.map((e) => e.date));
+  // 플레이스홀더(등록 앵커)는 완료된 날짜로 취급하지 않음
+  const realEntries = entries.filter((e) => !(e.amount === 0 && e.quantity === 0 && e.scheduleType));
+  const entryDates = new Set(realEntries.map((e) => e.date));
+
   const sortedDates = entries.map((e) => e.date).sort();
   const lastDate = new Date(sortedDates[sortedDates.length - 1] + 'T00:00:00');
 
+  // 실제 매수 기록이 없으면 등록일부터 스캔 (inclusive)
   const current = new Date(lastDate);
-  current.setDate(current.getDate() + 1);
+  if (realEntries.length > 0) {
+    current.setDate(current.getDate() + 1);
+  }
 
   const pending: string[] = [];
   while (current <= today) {
@@ -262,7 +269,7 @@ function DcaDetailContent() {
       // 조회 실패 시 등록 진행
     }
 
-    // DB에 초기 레코드 생성 (메인 페이지에서 조회되도록)
+    // DB에 초기 레코드 생성 (메인 페이지에서 조회되도록, 테이블에서는 숨김)
     try {
       const res = await fetch('/api/dca/entries', {
         method: 'POST',
@@ -293,8 +300,6 @@ function DcaDetailContent() {
     }
 
     setRegistered(true);
-    if (scheduleQuantity) setNewQuantity(scheduleQuantity);
-    setAdding(true);
   };
 
   // 투자 종료 (전체 삭제)
@@ -1068,35 +1073,9 @@ function DcaDetailContent() {
                           </Stack>
                         </TableCell>
                       </TableRow>
-                    ) : entry.amount === 0 && entry.quantity === 0 && entry.date === getToday() ? (
-                      <TableRow
-                        key={entry.id}
-                        sx={{
-                          bgcolor: 'rgba(255, 167, 38, 0.08)',
-                          cursor: isBusy ? 'default' : 'pointer',
-                          '&:hover': isBusy ? {} : { bgcolor: 'rgba(255, 167, 38, 0.15)' },
-                        }}
-                        onClick={() => {
-                          if (isBusy) return;
-                          setNewDate(entry.date);
-                          const qty = isNew ? scheduleQuantity : (fetchedScheduleQuantity ? String(fetchedScheduleQuantity) : '');
-                          setNewQuantity(qty);
-                          setAdding(true);
-                        }}
-                      >
-                        <TableCell>{entry.date}</TableCell>
-                        <TableCell align="right" sx={{ color: 'gray4' }}>-</TableCell>
-                        <TableCell align="right" sx={{ color: 'gray4' }}>-</TableCell>
-                        <TableCell align="right" sx={{ color: 'gray4' }}>-</TableCell>
-                        <TableCell align="right" sx={{ color: 'gray4' }}>-</TableCell>
-                        <TableCell align="right" sx={{ color: 'gray4' }}>-</TableCell>
-                        <TableCell align="right" sx={{ color: 'gray4' }}>-</TableCell>
-                        <TableCell align="center">
-                          <Typography variant="caption" color="warning.main" fontWeight={600}>
-                            미입력
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
+                    ) : entry.amount === 0 && entry.quantity === 0 && entry.scheduleType ? (
+                      // 플레이스홀더 (등록 앵커) — 테이블에서 숨김
+                      null
                     ) : entry.amount === 0 && entry.quantity === 0 ? (
                       <TableRow key={entry.id} sx={{ opacity: 0.45, '&:last-child td, &:last-child th': { border: 0 } }}>
                         <TableCell>{entry.date}</TableCell>
