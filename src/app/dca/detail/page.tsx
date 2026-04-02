@@ -207,6 +207,7 @@ function DcaDetailContent() {
   const [snackbar, setSnackbar] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [duplicateMsg, setDuplicateMsg] = useState<string | null>(null);
+  const [tickerError, setTickerError] = useState(false);
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
 
   // 기존 종목: DB에서 매수 기록 로드
@@ -267,6 +268,20 @@ function DcaDetailContent() {
       }
     } catch {
       // 조회 실패 시 등록 진행
+    }
+
+    // 티커 유효성 검증
+    try {
+      const priceRes = await fetch(`/api/stock/price?symbols=${encodeURIComponent(fullTicker)}`);
+      const priceData = await priceRes.json();
+      const result = Array.isArray(priceData) ? priceData[0] : null;
+      if (!result || result.error || !result.price) {
+        setTickerError(true);
+        return;
+      }
+    } catch {
+      setSnackbar('티커를 확인해주세요');
+      return;
     }
 
     // DB에 초기 레코드 생성 (메인 페이지에서 조회되도록, 테이블에서는 숨김)
@@ -1141,13 +1156,23 @@ function DcaDetailContent() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={!!duplicateMsg} onClose={() => setDuplicateMsg(null)}>
+      <Dialog open={!!duplicateMsg} onClose={() => setDuplicateMsg(null)} maxWidth="sm" fullWidth>
         <DialogTitle>종목 중복</DialogTitle>
         <DialogContent>
           <DialogContentText>{duplicateMsg}</DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDuplicateMsg(null)} variant="contained">확인</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={tickerError} onClose={() => setTickerError(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>티커 오류</DialogTitle>
+        <DialogContent>
+          <DialogContentText>티커를 확인해주세요</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTickerError(false)} variant="contained">확인</Button>
         </DialogActions>
       </Dialog>
 
