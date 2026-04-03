@@ -16,6 +16,13 @@ const CATEGORIES = [
   { value: 'ETF', label: 'ETF', suffix: '', currency: 'USD' as const, placeholder: 'SPY', hint: '' },
 ];
 
+const BROKERS = [
+  '교보증권', '대신증권', 'DB증권', '메리츠증권', '미래에셋증권', '삼성증권',
+  '신영증권', '신한투자증권', '아이엠증권', 'SK증권', 'NH투자증권', '유안타증권',
+  '유진투자증권', '카카오페이증권', 'KB증권', '키움증권', '토스증권', '하나증권',
+  '한국투자증권', '한화투자증권', '현대차증권', '기타',
+];
+
 interface InvestmentFormDialogProps {
   open: boolean;
   onClose: () => void;
@@ -30,6 +37,7 @@ const emptyForm: InvestmentInput = {
   quantity: 0,
   avgPrice: 0,
   currency: 'USD',
+  broker: '',
 };
 
 function getCategoryConfig(category: string) {
@@ -51,6 +59,7 @@ export default function InvestmentFormDialog({ open, onClose, onSubmit, initial 
         quantity: initial.quantity,
         avgPrice: initial.avgPrice,
         currency: initial.currency,
+        broker: initial.broker || '',
       } : emptyForm);
     }
   }, [open, initial]);
@@ -174,6 +183,20 @@ export default function InvestmentFormDialog({ open, onClose, onSubmit, initial 
               slotProps={{ htmlInput: { step: 'any', min: 0 } }}
             />
           </Stack>
+
+          <TextField
+            label="증권사"
+            value={form.broker || ''}
+            onChange={(e) => handleChange('broker', e.target.value)}
+            select
+            size="small"
+            fullWidth
+          >
+            <MenuItem value="">선택안함</MenuItem>
+            {BROKERS.map((b) => (
+              <MenuItem key={b} value={b}>{b}</MenuItem>
+            ))}
+          </TextField>
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2.5 }}>

@@ -9,6 +9,7 @@ interface MergedItem {
   quantity: number;
   avgPrice: number;
   currency: string;
+  broker: string;
 }
 
 function toInvestment(row: Record<string, unknown>): MergedItem {
@@ -20,6 +21,7 @@ function toInvestment(row: Record<string, unknown>): MergedItem {
     quantity: Number(row.quantity),
     avgPrice: Number(row.avg_price),
     currency: String(row.currency),
+    broker: row.broker ? String(row.broker) : '',
   };
 }
 
@@ -55,6 +57,8 @@ function mergeEntries(
       const newQty = existing.quantity + totalQty;
       existing.avgPrice = (oldCost + totalAmount) / newQty;
       existing.quantity = newQty;
+      // broker가 비어있으면 entries의 broker로 채움
+      if (!existing.broker && row.broker) existing.broker = String(row.broker);
     } else {
       map.set(ticker, {
         id: `${source}-${ticker}`,
@@ -64,6 +68,7 @@ function mergeEntries(
         quantity: totalQty,
         avgPrice: totalAmount / totalQty,
         currency: inferCurrency(ticker),
+        broker: row.broker ? String(row.broker) : '',
       });
     }
   }
@@ -86,11 +91,11 @@ export async function GET(request: NextRequest) {
       .order('id'),
     supabase
       .from('collect_entries')
-      .select('stock_name, ticker, amount, quantity')
+      .select('stock_name, ticker, amount, quantity, broker')
       .eq('user_id', userId),
     supabase
       .from('dca_entries')
-      .select('stock_name, ticker, amount, quantity')
+      .select('stock_name, ticker, amount, quantity, broker')
       .eq('user_id', userId),
   ]);
 
@@ -122,7 +127,7 @@ export async function GET(request: NextRequest) {
 
 /** 개별 엔트리 배열을 ticker별로 그룹핑하여 SUM(amount), SUM(quantity) 집계 */
 function aggregateByTicker(rows: Record<string, unknown>[]) {
-  const agg = new Map<string, { stock_name: string; ticker: string; total_amount: number; total_quantity: number }>();
+  const agg = new Map<string, { stock_name: string; ticker: string; total_amount: number; total_quantity: number; broker: string }>();
 
   for (const row of rows) {
     const ticker = String(row.ticker);
@@ -130,12 +135,14 @@ function aggregateByTicker(rows: Record<string, unknown>[]) {
     if (existing) {
       existing.total_amount += Number(row.amount);
       existing.total_quantity += Number(row.quantity);
+      if (!existing.broker && row.broker) existing.broker = String(row.broker);
     } else {
       agg.set(ticker, {
         stock_name: String(row.stock_name),
         ticker,
         total_amount: Number(row.amount),
         total_quantity: Number(row.quantity),
+        broker: row.broker ? String(row.broker) : '',
       });
     }
   }
@@ -161,6 +168,7 @@ export async function POST(request: NextRequest) {
       quantity: body.quantity,
       avg_price: body.avgPrice,
       currency: body.currency,
+      broker: body.broker || null,
     })
     .select()
     .single();

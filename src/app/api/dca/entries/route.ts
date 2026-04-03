@@ -13,6 +13,7 @@ function toEntry(row: Record<string, unknown>) {
     scheduleType: row.schedule_type ?? null,
     scheduleValue: row.schedule_value != null ? Number(row.schedule_value) : null,
     scheduleQuantity: row.schedule_quantity != null ? Number(row.schedule_quantity) : null,
+    broker: row.broker || '',
   };
 }
 
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
 // POST /api/dca/entries → 매수 기록 추가
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { userId, stockName, ticker, targetQuantity, date, amount, quantity, scheduleType, scheduleValue, scheduleQuantity } = body;
+  const { userId, stockName, ticker, targetQuantity, date, amount, quantity, scheduleType, scheduleValue, scheduleQuantity, broker } = body;
 
   if (!userId || !stockName || !ticker || !date || amount == null || quantity == null) {
     return NextResponse.json({ error: '필수 항목이 누락되었습니다.' }, { status: 400 });
@@ -62,6 +63,7 @@ export async function POST(request: NextRequest) {
       schedule_type: scheduleType || null,
       schedule_value: scheduleValue ?? null,
       schedule_quantity: scheduleQuantity ?? null,
+      broker: broker || null,
     })
     .select()
     .single();

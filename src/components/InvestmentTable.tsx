@@ -13,13 +13,14 @@ interface InvestmentTableProps {
   exchangeRate: number;
 }
 
-type SortKey = 'name' | 'ticker' | 'category' | 'invested' | 'quantity' | 'avgPrice' | 'price' | 'rate' | 'profit' | 'current';
+type SortKey = 'name' | 'ticker' | 'category' | 'broker' | 'invested' | 'quantity' | 'avgPrice' | 'price' | 'rate' | 'profit' | 'current';
 type SortDir = 'asc' | 'desc';
 
 const COLUMNS: { label: string; key: SortKey; align?: 'right' }[] = [
   { label: '종목명', key: 'name' },
   { label: '티커', key: 'ticker' },
   { label: '카테고리', key: 'category' },
+  { label: '증권사', key: 'broker' },
   { label: '투자금액', key: 'invested', align: 'right' },
   { label: '보유 수량', key: 'quantity', align: 'right' },
   { label: '매입가', key: 'avgPrice', align: 'right' },
@@ -45,6 +46,7 @@ function getRowValue(row: RowData, key: SortKey): number | string {
     case 'name': return row.item.name;
     case 'ticker': return row.item.ticker;
     case 'category': return row.item.category;
+    case 'broker': return row.item.broker || '';
     case 'invested': return row.invested;
     case 'quantity': return row.item.quantity;
     case 'avgPrice': return row.avgPriceKRW;
@@ -101,7 +103,7 @@ export default function InvestmentTable({ investments, prices, exchangeRate }: I
       setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortKey(key);
-      setSortDir(key === 'name' || key === 'ticker' || key === 'category' ? 'asc' : 'desc');
+      setSortDir(key === 'name' || key === 'ticker' || key === 'category' || key === 'broker' ? 'asc' : 'desc');
     }
   };
 
@@ -139,6 +141,7 @@ export default function InvestmentTable({ investments, prices, exchangeRate }: I
                 <TableCell sx={{ fontWeight: 600 }}>{item.name}</TableCell>
                 <TableCell sx={{ color: 'gray6' }}>{item.ticker}</TableCell>
                 <TableCell><Chip label={item.category} size="small" variant="outlined" /></TableCell>
+                <TableCell sx={{ color: 'gray6' }}>{item.broker || '-'}</TableCell>
                 <TableCell align="right">{formatKRW(invested)}</TableCell>
                 <TableCell align="right">{item.quantity.toLocaleString()}</TableCell>
                 <TableCell align="right">{formatCurrency(item.avgPrice, item.currency)}</TableCell>
@@ -199,6 +202,12 @@ export default function InvestmentTable({ investments, prices, exchangeRate }: I
                 </Stack>
                 <Collapse in={expanded}>
                   <Stack spacing={0.25} sx={{ pt: 0.5 }}>
+                    {item.broker && (
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography sx={labelSx}>증권사</Typography>
+                        <Typography sx={valueSx}>{item.broker}</Typography>
+                      </Stack>
+                    )}
                     <Stack direction="row" justifyContent="space-between">
                       <Typography sx={labelSx}>매입가</Typography>
                       <Typography sx={valueSx}>{formatCurrency(item.avgPrice, item.currency)}</Typography>

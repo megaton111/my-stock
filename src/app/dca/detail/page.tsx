@@ -51,6 +51,13 @@ const CATEGORIES = [
   { value: '코인', label: '코인', suffix: '-USD', currency: 'USD' as const, placeholder: 'BTC' },
 ];
 
+const BROKERS = [
+  '교보증권', '대신증권', 'DB증권', '메리츠증권', '미래에셋증권', '삼성증권',
+  '신영증권', '신한투자증권', '아이엠증권', 'SK증권', 'NH투자증권', '유안타증권',
+  '유진투자증권', '카카오페이증권', 'KB증권', '키움증권', '토스증권', '하나증권',
+  '한국투자증권', '한화투자증권', '현대차증권', '기타',
+];
+
 function getCategoryConfig(category: string) {
   return CATEGORIES.find((c) => c.value === category) || CATEGORIES[0];
 }
@@ -176,6 +183,7 @@ function DcaDetailContent() {
   const [scheduleType, setScheduleType] = useState<'weekly' | 'monthly'>('weekly');
   const [scheduleValue, setScheduleValue] = useState<number>(1);
   const [scheduleQuantity, setScheduleQuantity] = useState('');
+  const [broker, setBroker] = useState('');
   const [registered, setRegistered] = useState(false);
 
   const catConfig = getCategoryConfig(stockCategory);
@@ -289,6 +297,7 @@ function DcaDetailContent() {
           scheduleType,
           scheduleValue,
           scheduleQuantity: scheduleQuantity ? Number(scheduleQuantity) : null,
+          broker: broker || undefined,
         }),
       });
       if (!res.ok) {
@@ -699,6 +708,18 @@ function DcaDetailContent() {
                 slotProps={{ htmlInput: { min: 0, step: 'any' } }}
                 fullWidth
               />
+              <TextField
+                select
+                label="증권사"
+                value={broker}
+                onChange={(e) => setBroker(e.target.value)}
+                fullWidth
+              >
+                <MenuItem value="">선택안함</MenuItem>
+                {BROKERS.map((b) => (
+                  <MenuItem key={b} value={b}>{b}</MenuItem>
+                ))}
+              </TextField>
               <Box sx={{ display: 'flex', gap: 1.5, pt: 1 }}>
                 <Button
                   variant="contained"

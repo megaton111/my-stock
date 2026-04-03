@@ -16,7 +16,7 @@ const valueSx = { letterSpacing: '-1.5px', fontWeight: 700 } as const;
 
 export default function SummaryCards({ totalCurrentValue, totalInvested, totalProfit, totalRate, loading }: SummaryCardsProps) {
   return (
-    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1, sm: 2 }} width={1}>
+    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1, sm: 1 }} width={1}>
       <Paper sx={cardSx}>
         <Typography variant="body2" gutterBottom color="gray5">
           총 자산

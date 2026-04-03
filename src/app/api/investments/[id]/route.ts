@@ -10,6 +10,7 @@ function toInvestment(row: Record<string, unknown>) {
     quantity: Number(row.quantity),
     avgPrice: Number(row.avg_price),
     currency: row.currency,
+    broker: row.broker || '',
   };
 }
 
@@ -48,6 +49,7 @@ export async function PUT(
   if (body.quantity !== undefined) updates.quantity = body.quantity;
   if (body.avgPrice !== undefined) updates.avg_price = body.avgPrice;
   if (body.currency !== undefined) updates.currency = body.currency;
+  if (body.broker !== undefined) updates.broker = body.broker || null;
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: '수정할 항목이 없습니다.' }, { status: 400 });
