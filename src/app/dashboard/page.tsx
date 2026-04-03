@@ -59,13 +59,26 @@ export default function DashboardPage() {
       <PageHeader left={investments.length > 0 ? viewSwitcher : undefined} />
 
       {investmentsLoading ? (
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
           <Stack direction="row" spacing={2} width={1}>
             {[0, 1, 2].map((i) => (
-              <Skeleton key={i} variant="rectangular" animation="wave" height={88} sx={{ flex: 1 }} />
+              <Skeleton key={i} variant="rectangular" animation="wave" height={108} sx={{ flex: 1 }} />
             ))}
           </Stack>
-          <Skeleton variant="rectangular" animation="wave" width="100%" height={400} />
+          <Stack direction="column" width={1} spacing={1}>
+            <Skeleton variant="rectangular" animation="wave" width="100%" height={56} />
+            <Skeleton variant="rectangular" animation="wave" width="100%" height={56} />
+            <Skeleton variant="rectangular" animation="wave" width="100%" height={56} />
+            <Skeleton variant="rectangular" animation="wave" width="100%" height={56} />
+            <Skeleton variant="rectangular" animation="wave" width="100%" height={56} />
+            <Skeleton variant="rectangular" animation="wave" width="100%" height={56} />
+            <Skeleton variant="rectangular" animation="wave" width="100%" height={56} />
+            <Skeleton variant="rectangular" animation="wave" width="100%" height={56} />
+            <Skeleton variant="rectangular" animation="wave" width="100%" height={56} />
+            <Skeleton variant="rectangular" animation="wave" width="100%" height={56} />
+            <Skeleton variant="rectangular" animation="wave" width="100%" height={56} />
+            <Skeleton variant="rectangular" animation="wave" width="100%" height={56} />
+          </Stack>
         </Box>
       ) : investments.length === 0 ? (
         <Stack direction="column" spacing={7} width={1} pt={20} justifyContent="center" alignItems="center">
@@ -77,7 +90,7 @@ export default function DashboardPage() {
           <Button variant="contained" size='large' onClick={() => router.push('/investments')}>투자 내역 작성하기</Button>
         </Stack>
       ) : view === 'board' ? (
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
           <SummaryCards {...summary} loading={loading} />
           <InvestmentTable
             investments={investments}
@@ -86,7 +99,7 @@ export default function DashboardPage() {
           />
         </Box>
       ) : (
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
           <SummaryCards {...summary} loading={loading} />
           <PortfolioTreemap
             investments={investments}

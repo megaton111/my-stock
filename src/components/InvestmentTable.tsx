@@ -60,6 +60,8 @@ export default function InvestmentTable({ investments, prices, exchangeRate }: I
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
 
+  console.log({ exchangeRate }) ;
+
   const toggleCard = (ticker: string) => {
     setExpandedCards((prev) => {
       const next = new Set(prev);
