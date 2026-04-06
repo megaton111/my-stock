@@ -63,6 +63,7 @@ Next.js 16 App Router 기반의 한국어 주식 포트폴리오 트래커("My S
 | `dayjs` | 날짜 처리 |
 | `xlsx-js-style` | 엑셀 내보내기 |
 | `sass` | SCSS 지원 |
+| `resend` | 이메일 발송 (DCA 매수 알림) |
 
 ### 페이지 구조
 
@@ -91,6 +92,7 @@ Next.js 16 App Router 기반의 한국어 주식 포트폴리오 트래커("My S
 | `/api/market` | GET | 시장 지수 조회 |
 | `/api/users` | POST | 사용자 조회/생성 |
 | `/api/users/delete` | POST | 사용자 계정 삭제 |
+| `/api/cron/dca-reminder` | GET | 적립식 매수 이메일 알림 (Vercel Cron, 매일 KST 09:00) |
 | `/auth/callback` | GET | OAuth 콜백 핸들러 |
 
 ### 주요 디렉터리
@@ -149,3 +151,5 @@ src/
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase 공개 키 |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase 서비스 역할 키 (서버 전용) |
 | `EMAIL_ENCRYPTION_KEY` | 이메일 암호화 키 (AES-256-GCM) |
+| `RESEND_API_KEY` | Resend 이메일 발송 API 키 |
+| `CRON_SECRET` | Vercel Cron 인증 시크릿 |
