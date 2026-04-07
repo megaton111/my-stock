@@ -392,7 +392,7 @@ function CollectDetailContent() {
 
   if (loading) {
     return (
-      <Container maxWidth="xl" sx={{ py: 10, position: 'relative' }}>
+      <Container maxWidth="md" sx={{ py: 10, position: 'relative' }}>
         <PageHeader
           left={
             <IconButton
