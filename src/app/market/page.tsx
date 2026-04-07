@@ -73,7 +73,7 @@ export default function MarketPage() {
   }, [fetchMarket]);
 
   return (
-    <Container maxWidth="xl" sx={{ py: 10, position: 'relative' }}>
+    <Container maxWidth="md" sx={{ py: 10, position: 'relative' }}>
       <PageHeader />
 
       <Stack spacing={3} sx={{ alignItems: 'center' }}>

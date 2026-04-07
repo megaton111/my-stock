@@ -18,6 +18,10 @@ import { calcPortfolioSummary } from '@/utils/calculator';
 import SummaryCards from '@/components/SummaryCards';
 import InvestmentTable from '@/components/InvestmentTable';
 import PortfolioTreemap from '@/components/PortfolioTreemap';
+import AssetHistoryChart from '@/components/AssetHistoryChart';
+import AssetAllocationWidget from '@/components/AssetAllocationWidget';
+import DividendWidget from '@/components/DividendWidget';
+import ProgressWidget from '@/components/ProgressWidget';
 import PageHeader from '@/components/PageHeader';
 import { useRouter } from 'next/navigation';
 
@@ -25,7 +29,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [view, setView] = useState<'board' | 'graph'>('board');
 
-  const { investments, loading: investmentsLoading } = useInvestments();
+  const { investments, loading: investmentsLoading, userId } = useInvestments();
   const { prices, exchangeRate, loading } = useStockPrices(investments);
   const summary = calcPortfolioSummary(investments, prices, exchangeRate);
 
@@ -55,7 +59,7 @@ export default function DashboardPage() {
   );
 
   return (
-    <Container maxWidth="xl" sx={{ py: 10, position: 'relative' }}>
+    <Container maxWidth="md" sx={{ py: 10, position: 'relative' }}>
       <PageHeader left={investments.length > 0 ? viewSwitcher : undefined} />
 
       {investmentsLoading ? (
@@ -92,6 +96,10 @@ export default function DashboardPage() {
       ) : view === 'board' ? (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
           <SummaryCards {...summary} loading={loading} />
+          <AssetAllocationWidget investments={investments} prices={prices} exchangeRate={exchangeRate} />
+          {userId && <AssetHistoryChart userId={userId} />}
+          <DividendWidget investments={investments} exchangeRate={exchangeRate} />
+          <ProgressWidget />
           <InvestmentTable
             investments={investments}
             prices={prices}
@@ -101,6 +109,10 @@ export default function DashboardPage() {
       ) : (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
           <SummaryCards {...summary} loading={loading} />
+          <AssetAllocationWidget investments={investments} prices={prices} exchangeRate={exchangeRate} />
+          {userId && <AssetHistoryChart userId={userId} />}
+          <DividendWidget investments={investments} exchangeRate={exchangeRate} />
+          <ProgressWidget />
           <PortfolioTreemap
             investments={investments}
             prices={prices}

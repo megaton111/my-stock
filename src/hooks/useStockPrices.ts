@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Investment, PriceResult } from '@/types/investment';
+import { isCash } from '@/utils/assetClass';
 
 const POLL_INTERVAL = 30_000; // 30초
 const EXCHANGE_RATE_SYMBOL = 'USDKRW=X';
@@ -22,17 +23,18 @@ export function useStockPrices(investments: Investment[]): StockPricesState {
       return;
     }
 
-    const symbols = [
-      ...investments.map(item => item.ticker),
-      EXCHANGE_RATE_SYMBOL,
-    ].join(',');
+    const tickers = investments.map(item => item.ticker).filter(t => !isCash(t));
+    const symbols = [...tickers, EXCHANGE_RATE_SYMBOL].join(',');
 
     const fetchPrices = async () => {
       try {
         const response = await fetch(`/api/stock/price?symbols=${symbols}`);
         const data: PriceResult[] = await response.json();
 
-        const priceMap: Record<string, number> = {};
+        const priceMap: Record<string, number> = {
+          'CASH-KRW': 1,
+          'CASH-USD': 1,
+        };
         for (const item of data) {
           if (item.symbol === EXCHANGE_RATE_SYMBOL) {
             if (item.price) setExchangeRate(item.price);

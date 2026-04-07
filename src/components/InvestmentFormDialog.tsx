@@ -14,6 +14,7 @@ const CATEGORIES = [
   { value: '코스닥', label: '코스닥', suffix: '.KQ', currency: 'KRW' as const, placeholder: '373220', hint: '.KQ가 자동으로 붙습니다' },
   { value: '코인', label: '코인', suffix: '-USD', currency: 'USD' as const, placeholder: 'ETH', hint: '-USD가 자동으로 붙습니다' },
   { value: 'ETF', label: 'ETF', suffix: '', currency: 'USD' as const, placeholder: 'SPY', hint: '' },
+  { value: '현금', label: '현금', suffix: '', currency: 'KRW' as const, placeholder: '', hint: '' },
 ];
 
 const BROKERS = [
@@ -54,7 +55,7 @@ export default function InvestmentFormDialog({ open, onClose, onSubmit, initial 
       setTickerError('');
       setForm(initial ? {
         name: initial.name,
-        ticker: stripSuffix(initial.ticker, initial.category),
+        ticker: initial.category === '현금' ? '' : stripSuffix(initial.ticker, initial.category),
         category: initial.category,
         quantity: initial.quantity,
         avgPrice: initial.avgPrice,
@@ -64,6 +65,8 @@ export default function InvestmentFormDialog({ open, onClose, onSubmit, initial 
     }
   }, [open, initial]);
 
+  const isCash = form.category === '현금';
+
   const handleChange = (field: keyof InvestmentInput, value: string | number) => {
     if (field === 'ticker' || field === 'category') setTickerError('');
     setForm((prev) => {
@@ -71,6 +74,13 @@ export default function InvestmentFormDialog({ open, onClose, onSubmit, initial 
       if (field === 'category') {
         const config = getCategoryConfig(value as string);
         next.currency = config.currency;
+        if (value === '현금') {
+          next.avgPrice = 1;
+          next.ticker = `CASH-${config.currency}`;
+        }
+      }
+      if (field === 'currency' && prev.category === '현금') {
+        next.ticker = `CASH-${value}`;
       }
       return next;
     });
@@ -78,29 +88,35 @@ export default function InvestmentFormDialog({ open, onClose, onSubmit, initial 
 
   const handleSubmit = async () => {
     const submitted = { ...form };
-    const config = getCategoryConfig(submitted.category);
-    if (config.suffix && !submitted.ticker.endsWith(config.suffix)) {
-      submitted.ticker = `${submitted.ticker}${config.suffix}`;
-    }
 
-    // 신규 추가 시에만 티커 유효성 검증 (수정 시에는 이미 등록된 종목이므로 스킵)
-    if (!initial) {
-      setValidating(true);
-      try {
-        const res = await fetch(`/api/stock/price?symbols=${encodeURIComponent(submitted.ticker)}`);
-        const data = await res.json();
-        const result = Array.isArray(data) ? data[0] : null;
-        if (!result || result.error || !result.price) {
-          setTickerError('시세를 불러올 수 없는 티커입니다. 입력값을 확인해주세요.');
+    if (isCash) {
+      submitted.ticker = `CASH-${submitted.currency}`;
+      submitted.avgPrice = 1;
+    } else {
+      const config = getCategoryConfig(submitted.category);
+      if (config.suffix && !submitted.ticker.endsWith(config.suffix)) {
+        submitted.ticker = `${submitted.ticker}${config.suffix}`;
+      }
+
+      // 신규 추가 시에만 티커 유효성 검증 (수정 시에는 이미 등록된 종목이므로 스킵)
+      if (!initial) {
+        setValidating(true);
+        try {
+          const res = await fetch(`/api/stock/price?symbols=${encodeURIComponent(submitted.ticker)}`);
+          const data = await res.json();
+          const result = Array.isArray(data) ? data[0] : null;
+          if (!result || result.error || !result.price) {
+            setTickerError('시세를 불러올 수 없는 티커입니다. 입력값을 확인해주세요.');
+            setValidating(false);
+            return;
+          }
+        } catch {
+          setTickerError('티커 검증 중 오류가 발생했습니다. 다시 시도해주세요.');
           setValidating(false);
           return;
         }
-      } catch {
-        setTickerError('티커 검증 중 오류가 발생했습니다. 다시 시도해주세요.');
         setValidating(false);
-        return;
       }
-      setValidating(false);
     }
 
     onSubmit(submitted);
@@ -108,7 +124,9 @@ export default function InvestmentFormDialog({ open, onClose, onSubmit, initial 
   };
 
   const config = getCategoryConfig(form.category);
-  const isValid = form.name && form.ticker && form.quantity > 0 && form.avgPrice > 0;
+  const isValid = isCash
+    ? !!form.name && form.quantity > 0
+    : !!form.name && !!form.ticker && form.quantity > 0 && form.avgPrice > 0;
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -119,23 +137,25 @@ export default function InvestmentFormDialog({ open, onClose, onSubmit, initial 
         <Stack spacing={2.5} sx={{ mt: 1 }}>
           <Stack direction="row" spacing={2}>
             <TextField
-              label="종목명"
+              label={isCash ? '계좌명' : '종목명'}
               value={form.name}
               onChange={(e) => handleChange('name', e.target.value)}
               fullWidth
               size="small"
-              placeholder="애플"
+              placeholder={isCash ? 'KB증권 CMA' : '애플'}
             />
-            <TextField
-              label="티커"
-              value={form.ticker}
-              onChange={(e) => handleChange('ticker', e.target.value.toUpperCase())}
-              fullWidth
-              size="small"
-              placeholder={config.placeholder}
-              error={!!tickerError}
-              helperText={tickerError || config.hint || undefined}
-            />
+            {!isCash && (
+              <TextField
+                label="티커"
+                value={form.ticker}
+                onChange={(e) => handleChange('ticker', e.target.value.toUpperCase())}
+                fullWidth
+                size="small"
+                placeholder={config.placeholder}
+                error={!!tickerError}
+                helperText={tickerError || config.hint || undefined}
+              />
+            )}
           </Stack>
 
           <Stack direction="row" spacing={2} alignItems="center">
@@ -163,9 +183,9 @@ export default function InvestmentFormDialog({ open, onClose, onSubmit, initial 
             </ToggleButtonGroup>
           </Stack>
 
-          <Stack direction="row" spacing={2}>
+          {isCash ? (
             <TextField
-              label="보유 수량"
+              label={`금액 (${form.currency === 'USD' ? '$' : '원'})`}
               type="number"
               value={form.quantity || ''}
               onChange={(e) => handleChange('quantity', Number(e.target.value))}
@@ -173,19 +193,31 @@ export default function InvestmentFormDialog({ open, onClose, onSubmit, initial 
               size="small"
               slotProps={{ htmlInput: { step: 'any', min: 0 } }}
             />
-            <TextField
-              label={`매입가 (${form.currency === 'USD' ? '$' : '원'})`}
-              type="number"
-              value={form.avgPrice || ''}
-              onChange={(e) => handleChange('avgPrice', Number(e.target.value))}
-              fullWidth
-              size="small"
-              slotProps={{ htmlInput: { step: 'any', min: 0 } }}
-            />
-          </Stack>
+          ) : (
+            <Stack direction="row" spacing={2}>
+              <TextField
+                label="보유 수량"
+                type="number"
+                value={form.quantity || ''}
+                onChange={(e) => handleChange('quantity', Number(e.target.value))}
+                fullWidth
+                size="small"
+                slotProps={{ htmlInput: { step: 'any', min: 0 } }}
+              />
+              <TextField
+                label={`매입가 (${form.currency === 'USD' ? '$' : '원'})`}
+                type="number"
+                value={form.avgPrice || ''}
+                onChange={(e) => handleChange('avgPrice', Number(e.target.value))}
+                fullWidth
+                size="small"
+                slotProps={{ htmlInput: { step: 'any', min: 0 } }}
+              />
+            </Stack>
+          )}
 
           <TextField
-            label="증권사"
+            label={isCash ? '보관처' : '증권사'}
             value={form.broker || ''}
             onChange={(e) => handleChange('broker', e.target.value)}
             select

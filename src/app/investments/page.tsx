@@ -15,6 +15,7 @@ import { Investment, InvestmentInput } from '@/types/investment';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useStockPrices } from '@/hooks/useStockPrices';
 import { formatCurrency } from '@/utils/format';
+import { isCash } from '@/utils/assetClass';
 import PageHeader from '@/components/PageHeader';
 import InvestmentFormDialog from '@/components/InvestmentFormDialog';
 import { useRouter } from 'next/navigation';
@@ -135,7 +136,7 @@ export default function InvestmentsPage() {
   };
 
   return (
-    <Container maxWidth="xl" sx={{ py: 10, position: 'relative' }}>
+    <Container maxWidth="md" sx={{ py: 10, position: 'relative' }}>
       <PageHeader />
 
       <Stack spacing={3} sx={{ alignItems: 'center' }}>
@@ -146,20 +147,28 @@ export default function InvestmentsPage() {
             startIcon={<AddIcon />}
             onClick={openAdd}
           >
-            종목 추가
+            투자 등록
           </Button>
         </Box>
 
         {/* 데스크탑: 테이블 */}
         <TableContainer
           component={Paper}
-          sx={{ display: { xs: 'none', md: 'block' }, boxShadow: 'none', border: (theme) => `1px solid ${theme.palette.gray2}` }}
+          sx={{
+            display: { xs: 'none', md: 'block' },
+            boxShadow: 'none',
+            border: (theme) => `1px solid ${theme.palette.gray2}`,
+            '& .MuiTableCell-root': {
+              fontSize: '0.8rem',
+              padding: '8px 10px',
+            },
+          }}
         >
           <Table>
             <TableHead sx={{ bgcolor: 'gray1' }}>
               <TableRow>
                 {COLUMNS.map((col) => (
-                  <TableCell key={col.label || '_actions'} align={col.align} sx={headerCellSx}>
+                  <TableCell key={col.label || '_actions'} align={col.align} sx={{ ...headerCellSx, fontSize: '0.75rem' }}>
                     {col.key ? (
                       <TableSortLabel
                         active={sortKey === col.key}
@@ -189,15 +198,19 @@ export default function InvestmentsPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                sorted.map((item) => (
+                sorted.map((item) => {
+                  const cash = isCash(item.ticker);
+                  return (
                   <TableRow key={item.id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                     <TableCell sx={{ fontWeight: 600 }}>{item.name}</TableCell>
-                    <TableCell sx={{ color: 'gray6' }}>{item.ticker}</TableCell>
+                    <TableCell sx={{ color: 'gray6' }}>{cash ? '-' : item.ticker}</TableCell>
                     <TableCell>
                       <Chip label={item.category} size="small" variant="outlined" />
                     </TableCell>
-                    <TableCell align="right">{item.quantity.toLocaleString()}</TableCell>
-                    <TableCell align="right">{formatCurrency(item.avgPrice, item.currency)}</TableCell>
+                    <TableCell align="right">
+                      {cash ? formatCurrency(item.quantity, item.currency) : item.quantity.toLocaleString()}
+                    </TableCell>
+                    <TableCell align="right">{cash ? '-' : formatCurrency(item.avgPrice, item.currency)}</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 600 }}>
                       {formatCurrency(
                         item.currency === 'USD'
@@ -234,7 +247,8 @@ export default function InvestmentsPage() {
                       })()}
                     </TableCell>
                   </TableRow>
-                ))
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -250,6 +264,7 @@ export default function InvestmentsPage() {
             <Stack spacing={1}>
               {sorted.map((item) => {
                 const source = isMergedEntry(item.id);
+                const cash = isCash(item.ticker);
                 const totalAmount = item.currency === 'USD'
                   ? item.avgPrice * item.quantity * exchangeRate
                   : item.avgPrice * item.quantity;
@@ -284,13 +299,17 @@ export default function InvestmentsPage() {
                       </Stack>
                       <Stack spacing={0.25}>
                         <Stack direction="row" justifyContent="space-between">
-                          <Typography sx={{ color: 'gray6', fontSize: '0.75rem' }}>보유 수량</Typography>
-                          <Typography sx={{ fontSize: '0.75rem' }}>{item.quantity.toLocaleString()}</Typography>
+                          <Typography sx={{ color: 'gray6', fontSize: '0.75rem' }}>{cash ? '금액' : '보유 수량'}</Typography>
+                          <Typography sx={{ fontSize: '0.75rem' }}>
+                            {cash ? formatCurrency(item.quantity, item.currency) : item.quantity.toLocaleString()}
+                          </Typography>
                         </Stack>
-                        <Stack direction="row" justifyContent="space-between">
-                          <Typography sx={{ color: 'gray6', fontSize: '0.75rem' }}>매입가</Typography>
-                          <Typography sx={{ fontSize: '0.75rem' }}>{formatCurrency(item.avgPrice, item.currency)}</Typography>
-                        </Stack>
+                        {!cash && (
+                          <Stack direction="row" justifyContent="space-between">
+                            <Typography sx={{ color: 'gray6', fontSize: '0.75rem' }}>매입가</Typography>
+                            <Typography sx={{ fontSize: '0.75rem' }}>{formatCurrency(item.avgPrice, item.currency)}</Typography>
+                          </Stack>
+                        )}
                         <Stack direction="row" justifyContent="space-between">
                           <Typography sx={{ color: 'gray6', fontSize: '0.75rem' }}>총 투자금액</Typography>
                           <Typography sx={{ fontSize: '0.75rem', fontWeight: 600 }}>{formatCurrency(totalAmount, 'KRW')}</Typography>

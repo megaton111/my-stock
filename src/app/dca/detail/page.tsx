@@ -560,7 +560,7 @@ function DcaDetailContent() {
 
   if (loading) {
     return (
-      <Container maxWidth="xl" sx={{ py: 10, position: 'relative' }}>
+      <Container maxWidth="md" sx={{ py: 10, position: 'relative' }}>
         <PageHeader
           left={
             <IconButton
@@ -587,7 +587,7 @@ function DcaDetailContent() {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: 10, position: 'relative' }}>
+    <Container maxWidth="md" sx={{ py: 10, position: 'relative' }}>
       <PageHeader
         left={
           <IconButton
@@ -918,7 +918,17 @@ function DcaDetailContent() {
         {(!isNew || registered) && (
           <TableContainer
             component={Paper}
-            sx={{ boxShadow: 'none', border: (theme) => `1px solid ${theme.palette.gray2}` }}
+            sx={{
+              boxShadow: 'none',
+              border: (theme) => `1px solid ${theme.palette.gray2}`,
+              '& .MuiTableCell-root': {
+                fontSize: '0.8rem',
+                padding: '8px 10px',
+              },
+              '& .MuiTableHead-root .MuiTableCell-root': {
+                fontSize: '0.75rem',
+              },
+            }}
           >
             <Table>
               <TableHead sx={{ bgcolor: 'gray1' }}>

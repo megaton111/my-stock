@@ -98,7 +98,7 @@ export default function DcaPage() {
   }, [fetchStocks]);
 
   return (
-    <Container maxWidth="xl" sx={{ py: 10, position: 'relative' }}>
+    <Container maxWidth="md" sx={{ py: 10, position: 'relative' }}>
       <PageHeader />
 
       <Stack spacing={3} sx={{ alignItems: 'center' }}>
@@ -128,7 +128,7 @@ export default function DcaPage() {
             sx={{
               width: '100%',
               display: 'grid',
-              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr 1fr' },
+              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
               gap: 1,
             }}
           >
@@ -142,8 +142,8 @@ export default function DcaPage() {
                   key={stock.ticker}
                   onClick={() => router.push(`/dca/detail?ticker=${stock.ticker}`)}
                   sx={{
-                    px: { xs: 1.5, sm: 3 },
-                    py: { xs: 1, sm: 3 },
+                    px: { xs: 1.5, sm: 2 },
+                    py: { xs: 1, sm: 1.75 },
                     border: '1px solid',
                     borderColor: 'gray2',
                     boxShadow: 'none',
@@ -156,25 +156,25 @@ export default function DcaPage() {
                     },
                   }}
                 >
-                  <Stack spacing={{ xs: 0.5, sm: 1.5 }}>
+                  <Stack spacing={{ xs: 0.5, sm: 1 }}>
                     <Stack direction="row" alignItems="center" justifyContent="space-between">
-                      <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 0 }}>
-                        <Typography sx={{ fontSize: { xs: 16, sm: 28 } }} fontWeight={700}>{stock.stockName}</Typography>
+                      <Stack direction="row" alignItems="center" spacing={0.75} sx={{ minWidth: 0 }}>
+                        <Typography sx={{ fontSize: { xs: 14, sm: 18 } }} fontWeight={700}>{stock.stockName}</Typography>
                         {overdueCount > 0 && (
                           <Box
                             sx={{
-                              px: 1,
+                              px: 0.75,
                               py: 0.25,
                               bgcolor: 'rgba(255, 152, 0, 0.1)',
                               borderRadius: 1,
                               display: 'flex',
                               alignItems: 'center',
-                              gap: 0.5,
+                              gap: 0.25,
                               flexShrink: 0,
                             }}
                           >
-                            <WarningAmberIcon sx={{ fontSize: 14, color: 'warning.main' }} />
-                            <Typography variant="caption" color="warning.dark" fontWeight={600} lineHeight={1}>
+                            <WarningAmberIcon sx={{ fontSize: 12, color: 'warning.main' }} />
+                            <Typography sx={{ fontSize: '0.65rem' }} color="warning.dark" fontWeight={600} lineHeight={1}>
                               {overdueCount}건 미입력
                             </Typography>
                           </Box>
@@ -194,13 +194,13 @@ export default function DcaPage() {
                     </Stack>
                     <Stack direction="column" spacing={0.25}>
                       <Stack direction="row" alignItems="center">
-                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.75rem', sm: '18px' }, color: { xs: 'gray6', sm: 'inherit' } }}>달성률</Typography>
-                        <Typography variant="body1" flex={1} sx={{ fontSize: { xs: '0.75rem', sm: '18px' } }} fontWeight={700} textAlign="right">{percent}%</Typography>
+                        <Typography flex={1} sx={{ fontSize: '0.75rem', color: 'gray6' }}>달성률</Typography>
+                        <Typography flex={1} sx={{ fontSize: '0.75rem' }} fontWeight={700} textAlign="right">{percent}%</Typography>
                       </Stack>
                     </Stack>
 
                     {/* 달성률 프로그레스 바 */}
-                    <Box sx={{ width: '100%', height: 6, bgcolor: 'gray2', borderRadius: 3, overflow: 'hidden' }}>
+                    <Box sx={{ width: '100%', height: 5, bgcolor: 'gray2', borderRadius: 3, overflow: 'hidden' }}>
                       <Box
                         sx={{
                           width: `${percent}%`,
@@ -243,21 +243,21 @@ export default function DcaPage() {
                       <Stack spacing={0.25}>
                         {schedule && (
                           <Stack direction="row" alignItems="center" justifyContent="space-between">
-                            <Typography variant="body1" flexShrink={0} sx={{ fontSize: '18px' }}>투자날짜</Typography>
-                            <Typography variant="body1" sx={{ fontSize: '18px' }} textAlign="right" color="primary.main" fontWeight={600} whiteSpace="nowrap">
+                            <Typography flexShrink={0} sx={{ fontSize: '0.75rem', color: 'gray6' }}>투자날짜</Typography>
+                            <Typography sx={{ fontSize: '0.75rem' }} textAlign="right" color="primary.main" fontWeight={600} whiteSpace="nowrap">
                               {schedule}
                             </Typography>
                           </Stack>
                         )}
                         <Stack direction="row" alignItems="center">
-                          <Typography variant="body1" flex={1} sx={{ fontSize: '18px' }}>목표수량</Typography>
-                          <Typography variant="body1" flex={1} sx={{ fontSize: '18px' }} textAlign="right">
+                          <Typography flex={1} sx={{ fontSize: '0.75rem', color: 'gray6' }}>목표수량</Typography>
+                          <Typography flex={1} sx={{ fontSize: '0.75rem' }} textAlign="right">
                             {stock.targetQuantity.toLocaleString()}
                           </Typography>
                         </Stack>
                         <Stack direction="row" alignItems="center">
-                          <Typography variant="body1" flex={1} sx={{ fontSize: '18px' }} fontWeight={700}>현재수량</Typography>
-                          <Typography variant="body1" flex={1} sx={{ fontSize: '18px' }} fontWeight={700} textAlign="right">
+                          <Typography flex={1} sx={{ fontSize: '0.75rem', color: 'gray6' }}>현재수량</Typography>
+                          <Typography flex={1} sx={{ fontSize: '0.75rem' }} fontWeight={700} textAlign="right">
                             {stock.currentQuantity.toLocaleString()}
                           </Typography>
                         </Stack>

@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Box, Paper, Stack, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, Chip, IconButton, Collapse } from '@mui/material';
+import { Box, Paper, Stack, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, IconButton, Collapse } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Investment } from '@/types/investment';
 import { investedAmount, currentValue } from '@/utils/calculator';
 import { formatCurrency, formatKRW, formatRate, formatProfit, profitColor } from '@/utils/format';
+import { isCash } from '@/utils/assetClass';
 
 interface InvestmentTableProps {
   investments: Investment[];
@@ -13,14 +14,11 @@ interface InvestmentTableProps {
   exchangeRate: number;
 }
 
-type SortKey = 'name' | 'ticker' | 'category' | 'broker' | 'invested' | 'quantity' | 'avgPrice' | 'price' | 'rate' | 'profit' | 'current';
+type SortKey = 'name' | 'invested' | 'quantity' | 'avgPrice' | 'price' | 'rate' | 'profit' | 'current';
 type SortDir = 'asc' | 'desc';
 
 const COLUMNS: { label: string; key: SortKey; align?: 'right' }[] = [
   { label: '종목명', key: 'name' },
-  { label: '티커', key: 'ticker' },
-  { label: '카테고리', key: 'category' },
-  { label: '증권사', key: 'broker' },
   { label: '투자금액', key: 'invested', align: 'right' },
   { label: '보유 수량', key: 'quantity', align: 'right' },
   { label: '매입가', key: 'avgPrice', align: 'right' },
@@ -44,9 +42,6 @@ interface RowData {
 function getRowValue(row: RowData, key: SortKey): number | string {
   switch (key) {
     case 'name': return row.item.name;
-    case 'ticker': return row.item.ticker;
-    case 'category': return row.item.category;
-    case 'broker': return row.item.broker || '';
     case 'invested': return row.invested;
     case 'quantity': return row.item.quantity;
     case 'avgPrice': return row.avgPriceKRW;
@@ -103,7 +98,7 @@ export default function InvestmentTable({ investments, prices, exchangeRate }: I
       setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortKey(key);
-      setSortDir(key === 'name' || key === 'ticker' || key === 'category' || key === 'broker' ? 'asc' : 'desc');
+      setSortDir(key === 'name' ? 'asc' : 'desc');
     }
   };
 
@@ -113,12 +108,20 @@ export default function InvestmentTable({ investments, prices, exchangeRate }: I
   return (
     <>
       {/* 데스크탑: 테이블 */}
-      <TableContainer component={Paper} sx={{ display: { xs: 'none', md: 'block' }, boxShadow: 'none', border: (theme) => `1px solid ${theme.palette.gray2}` }}>
+      <TableContainer component={Paper} sx={{
+        display: { xs: 'none', md: 'block' },
+        boxShadow: 'none',
+        border: (theme) => `1px solid ${theme.palette.gray2}`,
+        '& .MuiTableCell-root': {
+          fontSize: '0.8rem',
+          padding: '8px 10px',
+        },
+      }}>
         <Table>
           <TableHead sx={{ bgcolor: 'gray1' }}>
             <TableRow>
               {COLUMNS.map((col) => (
-                <TableCell key={col.key} align={col.align} sx={{ color: 'gray7', fontWeight: 600 }}>
+                <TableCell key={col.key} align={col.align} sx={{ color: 'gray7', fontWeight: 600, fontSize: '0.75rem' }}>
                   <TableSortLabel
                     active={sortKey === col.key}
                     direction={sortKey === col.key ? sortDir : 'asc'}
@@ -136,29 +139,34 @@ export default function InvestmentTable({ investments, prices, exchangeRate }: I
             </TableRow>
           </TableHead>
           <TableBody>
-            {sortedRows.map(({ item, price, invested, current, profit, rate }) => (
+            {sortedRows.map(({ item, price, invested, current, profit, rate }) => {
+              const cash = isCash(item.ticker);
+              return (
               <TableRow key={item.ticker} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                <TableCell sx={{ fontWeight: 600 }}>{item.name}</TableCell>
-                <TableCell sx={{ color: 'gray6' }}>{item.ticker}</TableCell>
-                <TableCell><Chip label={item.category} size="small" variant="outlined" /></TableCell>
-                <TableCell sx={{ color: 'gray6' }}>{item.broker || '-'}</TableCell>
+                <TableCell>
+                  <Typography fontWeight={600} fontSize="0.8rem" lineHeight={1.25}>{item.name}</Typography>
+                  <Typography color="gray6" fontSize="0.65rem" lineHeight={1.2}>{cash ? '현금' : item.ticker}</Typography>
+                </TableCell>
                 <TableCell align="right">{formatKRW(invested)}</TableCell>
-                <TableCell align="right">{item.quantity.toLocaleString()}</TableCell>
-                <TableCell align="right">{formatCurrency(item.avgPrice, item.currency)}</TableCell>
+                <TableCell align="right">
+                  {cash ? formatCurrency(item.quantity, item.currency) : item.quantity.toLocaleString()}
+                </TableCell>
+                <TableCell align="right">{cash ? '-' : formatCurrency(item.avgPrice, item.currency)}</TableCell>
                 <TableCell align="right" sx={{ fontWeight: 700 }}>
-                  {price ? formatCurrency(price, item.currency) : '-'}
+                  {cash ? '-' : (price ? formatCurrency(price, item.currency) : '-')}
                 </TableCell>
                 <TableCell align="right" sx={{ color: profitColor(rate), fontWeight: 700 }}>
-                  {price ? formatRate(rate) : '-'}
+                  {cash ? '-' : (price ? formatRate(rate) : '-')}
                 </TableCell>
                 <TableCell align="right" sx={{ color: profitColor(profit), fontWeight: 700 }}>
-                  {price ? formatProfit(profit) : '-'}
+                  {cash ? '-' : (price ? formatProfit(profit) : '-')}
                 </TableCell>
                 <TableCell align="right" sx={{ fontWeight: 700 }}>
                   {price ? formatKRW(current) : '-'}
                 </TableCell>
               </TableRow>
-            ))}
+              );
+            })}
           </TableBody>
         </Table>
       </TableContainer>
@@ -167,6 +175,7 @@ export default function InvestmentTable({ investments, prices, exchangeRate }: I
       <Box sx={{ display: { xs: 'grid', md: 'none' }, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1, width: 1 }}>
         {sortedRows.map(({ item, price, invested, current, profit, rate }) => {
           const expanded = expandedCards.has(item.ticker);
+          const cash = isCash(item.ticker);
           return (
             <Paper
               key={item.ticker}
@@ -187,39 +196,52 @@ export default function InvestmentTable({ investments, prices, exchangeRate }: I
                   </IconButton>
                 </Stack>
                 <Stack spacing={0.25}>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography sx={labelSx}>수익률</Typography>
-                    <Typography sx={{ ...valueSx, fontWeight: 700, color: profitColor(rate) }}>
-                      {price ? formatRate(rate) : '-'}
-                    </Typography>
-                  </Stack>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography sx={labelSx}>수익금</Typography>
-                    <Typography sx={{ ...valueSx, fontWeight: 700, color: profitColor(profit) }}>
-                      {price ? formatProfit(profit) : '-'}
-                    </Typography>
-                  </Stack>
+                  {cash ? (
+                    <Stack direction="row" justifyContent="space-between">
+                      <Typography sx={labelSx}>금액</Typography>
+                      <Typography sx={{ ...valueSx, fontWeight: 700 }}>{formatKRW(current)}</Typography>
+                    </Stack>
+                  ) : (
+                    <>
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography sx={labelSx}>수익률</Typography>
+                        <Typography sx={{ ...valueSx, fontWeight: 700, color: profitColor(rate) }}>
+                          {price ? formatRate(rate) : '-'}
+                        </Typography>
+                      </Stack>
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography sx={labelSx}>수익금</Typography>
+                        <Typography sx={{ ...valueSx, fontWeight: 700, color: profitColor(profit) }}>
+                          {price ? formatProfit(profit) : '-'}
+                        </Typography>
+                      </Stack>
+                    </>
+                  )}
                 </Stack>
                 <Collapse in={expanded}>
                   <Stack spacing={0.25} sx={{ pt: 0.5 }}>
                     {item.broker && (
                       <Stack direction="row" justifyContent="space-between">
-                        <Typography sx={labelSx}>증권사</Typography>
+                        <Typography sx={labelSx}>{cash ? '보관처' : '증권사'}</Typography>
                         <Typography sx={valueSx}>{item.broker}</Typography>
                       </Stack>
                     )}
+                    {!cash && (
+                      <>
+                        <Stack direction="row" justifyContent="space-between">
+                          <Typography sx={labelSx}>매입가</Typography>
+                          <Typography sx={valueSx}>{formatCurrency(item.avgPrice, item.currency)}</Typography>
+                        </Stack>
+                        <Stack direction="row" justifyContent="space-between">
+                          <Typography sx={labelSx}>현재가</Typography>
+                          <Typography sx={{ ...valueSx, fontWeight: 700 }}>
+                            {price ? formatCurrency(price, item.currency) : '-'}
+                          </Typography>
+                        </Stack>
+                      </>
+                    )}
                     <Stack direction="row" justifyContent="space-between">
-                      <Typography sx={labelSx}>매입가</Typography>
-                      <Typography sx={valueSx}>{formatCurrency(item.avgPrice, item.currency)}</Typography>
-                    </Stack>
-                    <Stack direction="row" justifyContent="space-between">
-                      <Typography sx={labelSx}>현재가</Typography>
-                      <Typography sx={{ ...valueSx, fontWeight: 700 }}>
-                        {price ? formatCurrency(price, item.currency) : '-'}
-                      </Typography>
-                    </Stack>
-                    <Stack direction="row" justifyContent="space-between">
-                      <Typography sx={labelSx}>투자금액</Typography>
+                      <Typography sx={labelSx}>{cash ? '원금' : '투자금액'}</Typography>
                       <Typography sx={valueSx}>{formatKRW(invested)}</Typography>
                     </Stack>
                     <Stack direction="row" justifyContent="space-between">
