@@ -88,7 +88,7 @@ export default function AssetHistoryChart({ userId }: AssetHistoryChartProps) {
   const changeRate = firstValue > 0 ? (change / firstValue) * 100 : 0;
 
   return (
-    <Paper sx={{ p: { xs: 2, sm: 3 }, width: '100%', boxShadow: 'none', border: `1px solid ${theme.palette.gray2}` }}>
+    <Paper sx={{ p: { xs: 2, sm: 3 }, width: '100%', borderRadius: 2 }}>
       <Stack spacing={2}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} spacing={1}>
           <Box>

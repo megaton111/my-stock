@@ -124,7 +124,7 @@ export default function DividendWidget({ investments, exchangeRate }: DividendWi
 
   if (loading) {
     return (
-      <Paper sx={{ p: 3, width: 1, boxShadow: 'none', border: `1px solid ${theme.palette.gray2}`, display: 'flex', justifyContent: 'center' }}>
+      <Paper sx={{ p: 3, width: 1, borderRadius: 2, display: 'flex', justifyContent: 'center' }}>
         <CircularProgress size={24} />
       </Paper>
     );
@@ -134,11 +134,11 @@ export default function DividendWidget({ investments, exchangeRate }: DividendWi
   if (stockRows.length === 0) return null;
 
   return (
-    <Paper sx={{ p: { xs: 2, sm: 3 }, width: 1, boxShadow: 'none', border: `1px solid ${theme.palette.gray2}` }}>
+    <Paper sx={{ p: { xs: 2, sm: 3 }, width: 1, borderRadius: 2 }}>
       <Stack spacing={2.5}>
         {/* 헤더 */}
         <Stack direction="row" alignItems="center" spacing={1}>
-          <PaidIcon sx={{ fontSize: 20, color: 'warning.main' }} />
+          {/* <PaidIcon sx={{ fontSize: 20, color: 'warning.main' }} /> */}
           <Typography variant="body2" color="gray6" fontWeight={600}>
             배당 현황
           </Typography>

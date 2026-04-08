@@ -1,15 +1,17 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Container, Typography, Box, Button, Stack, Paper,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  TableSortLabel, IconButton, Chip,
+  TableSortLabel, Chip, Collapse, IconButton,
   Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import { formatProfit, profitColor } from '@/utils/format';
+import type { ClosedPositionItem } from '@/app/api/positions/route';
 
 import { Investment, InvestmentInput } from '@/types/investment';
 import { useInvestments } from '@/hooks/useInvestments';
@@ -18,6 +20,9 @@ import { formatCurrency } from '@/utils/format';
 import { isCash } from '@/utils/assetClass';
 import PageHeader from '@/components/PageHeader';
 import InvestmentFormDialog from '@/components/InvestmentFormDialog';
+import SellDialog, { SellSubmitData } from '@/components/SellDialog';
+import BuyDialog, { BuySubmitData } from '@/components/BuyDialog';
+import PositionHistory from '@/components/PositionHistory';
 import { useRouter } from 'next/navigation';
 
 /** collect-* / dca-* 접두사 ID로 병합 항목 여부를 판별 */
@@ -74,11 +79,40 @@ function compare(a: Investment, b: Investment, key: SortKey, exchangeRate: numbe
 export default function InvestmentsPage() {
   const router = useRouter();
   const { investments, loading, userId, refetch } = useInvestments();
-  const { exchangeRate } = useStockPrices(investments);
+  const { prices, exchangeRate } = useStockPrices(investments);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Investment | null>(null);
   const [deleting, setDeleting] = useState<Investment | null>(null);
+  const [selling, setSelling] = useState<Investment | null>(null);
+  const [buying, setBuying] = useState<Investment | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [redirectTarget, setRedirectTarget] = useState<{ name: string; source: 'collect' | 'dca' } | null>(null);
+  const [closedPositions, setClosedPositions] = useState<ClosedPositionItem[]>([]);
+  const [closedLoading, setClosedLoading] = useState(true);
+  const [closedOpen, setClosedOpen] = useState(false);
+  const [expandedClosedId, setExpandedClosedId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    fetch(`/api/positions?userId=${userId}&status=closed`)
+      .then((res) => res.ok ? res.json() : [])
+      .then((data: ClosedPositionItem[]) => {
+        if (!cancelled) {
+          setClosedPositions(data);
+          setClosedLoading(false);
+        }
+      })
+      .catch(() => { if (!cancelled) setClosedLoading(false); });
+    return () => { cancelled = true; };
+  }, [userId, investments]);
+
+  const toggleExpand = (item: Investment) => {
+    if (!item.positionId) return;
+    setExpandedId((prev) => (prev === item.id ? null : item.id));
+  };
+
+  const stopPropagation = (e: React.MouseEvent) => e.stopPropagation();
 
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDirection>('asc');
@@ -125,6 +159,36 @@ export default function InvestmentsPage() {
     refetch();
   };
 
+  const handleBuy = async (data: BuySubmitData) => {
+    if (!buying) return;
+    const res = await fetch(`/api/investments/${buying.id}/buy`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: '추가매수 처리 중 오류가 발생했습니다.' }));
+      throw new Error(error || '추가매수 처리 실패');
+    }
+    setBuying(null);
+    refetch();
+  };
+
+  const handleSell = async (data: SellSubmitData) => {
+    if (!selling) return;
+    const res = await fetch(`/api/investments/${selling.id}/sell`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: '매도 처리 중 오류가 발생했습니다.' }));
+      throw new Error(error || '매도 처리 실패');
+    }
+    setSelling(null);
+    refetch();
+  };
+
   const openEdit = (item: Investment) => {
     setEditing(item);
     setFormOpen(true);
@@ -144,7 +208,6 @@ export default function InvestmentsPage() {
           <Typography variant="h5" fontWeight={700}>투자내역 관리</Typography>
           <Button
             variant="contained"
-            startIcon={<AddIcon />}
             onClick={openAdd}
           >
             투자 등록
@@ -200,8 +263,18 @@ export default function InvestmentsPage() {
               ) : (
                 sorted.map((item) => {
                   const cash = isCash(item.ticker);
+                  const canExpand = !!item.positionId && !cash;
+                  const expanded = expandedId === item.id;
                   return (
-                  <TableRow key={item.id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                  <React.Fragment key={item.id}>
+                  <TableRow
+                    sx={{
+                      '& > td': { borderBottom: expanded ? 'none' : undefined },
+                      cursor: canExpand ? 'pointer' : 'default',
+                      '&:hover': canExpand ? { bgcolor: 'gray1' } : undefined,
+                    }}
+                    onClick={() => canExpand && toggleExpand(item)}
+                  >
                     <TableCell sx={{ fontWeight: 600 }}>{item.name}</TableCell>
                     <TableCell sx={{ color: 'gray6' }}>{cash ? '-' : item.ticker}</TableCell>
                     <TableCell>
@@ -220,33 +293,72 @@ export default function InvestmentsPage() {
                       )}
                     </TableCell>
                     <TableCell>{item.currency}</TableCell>
-                    <TableCell align="center">
+                    <TableCell align="center" onClick={stopPropagation}>
                       {(() => {
                         const source = isMergedEntry(item.id);
                         if (source) {
                           return (
-                            <IconButton
+                            <Button
                               size="small"
+                              variant="text"
                               onClick={() => setRedirectTarget({ name: item.name, source })}
-                              sx={{ color: 'gray6' }}
+                              sx={{ minWidth: 'auto', px: 1, py: 0.25, fontSize: '0.75rem' }}
                             >
-                              <EditIcon fontSize="small" />
-                            </IconButton>
+                              이동
+                            </Button>
                           );
                         }
                         return (
-                          <Stack direction="row" spacing={0.5} justifyContent="center">
-                            <IconButton size="small" onClick={() => openEdit(item)} sx={{ color: 'gray6' }}>
-                              <EditIcon fontSize="small" />
-                            </IconButton>
-                            <IconButton size="small" onClick={() => setDeleting(item)} sx={{ color: 'gray6' }}>
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
+                          <Stack direction="row" spacing={0.25} justifyContent="center">
+                            <Button
+                              size="small"
+                              variant="text"
+                              onClick={() => openEdit(item)}
+                              sx={{ minWidth: 'auto', px: 1, py: 0.25, fontSize: '0.75rem', color: 'gray8' }}
+                            >
+                              수정
+                            </Button>
+                            {!cash && (
+                              <Button
+                                size="small"
+                                variant="text"
+                                onClick={() => setBuying(item)}
+                                sx={{ minWidth: 'auto', px: 1, py: 0.25, fontSize: '0.75rem', color: 'primary.main' }}
+                              >
+                                매수
+                              </Button>
+                            )}
+                            {!cash && (
+                              <Button
+                                size="small"
+                                variant="text"
+                                onClick={() => setSelling(item)}
+                                sx={{ minWidth: 'auto', px: 1, py: 0.25, fontSize: '0.75rem', color: 'error.main' }}
+                              >
+                                매도
+                              </Button>
+                            )}
+                            <Button
+                              size="small"
+                              variant="text"
+                              onClick={() => setDeleting(item)}
+                              sx={{ minWidth: 'auto', px: 1, py: 0.25, fontSize: '0.75rem', color: 'gray8' }}
+                            >
+                              삭제
+                            </Button>
                           </Stack>
                         );
                       })()}
                     </TableCell>
                   </TableRow>
+                  {expanded && item.positionId && (
+                    <TableRow>
+                      <TableCell colSpan={COLUMNS.length} sx={{ p: 0, bgcolor: 'gray1' }}>
+                        <PositionHistory positionId={item.positionId} />
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  </React.Fragment>
                   );
                 })
               )}
@@ -265,34 +377,71 @@ export default function InvestmentsPage() {
               {sorted.map((item) => {
                 const source = isMergedEntry(item.id);
                 const cash = isCash(item.ticker);
+                const canExpand = !!item.positionId && !cash;
+                const expanded = expandedId === item.id;
                 const totalAmount = item.currency === 'USD'
                   ? item.avgPrice * item.quantity * exchangeRate
                   : item.avgPrice * item.quantity;
                 return (
                   <Paper
                     key={item.id}
-                    sx={{ px: 1.5, py: 1, border: '1px solid', borderColor: 'gray2', boxShadow: 'none' }}
+                    sx={{
+                      px: 1.5, py: 1, border: '1px solid', borderColor: 'gray2', boxShadow: 'none',
+                      cursor: canExpand ? 'pointer' : 'default',
+                    }}
+                    onClick={() => canExpand && toggleExpand(item)}
                   >
                     <Stack spacing={1}>
                       <Stack direction="row" alignItems="center" justifyContent="space-between">
                         <Typography fontWeight={700} fontSize={16}>{item.name}</Typography>
-                        <Stack direction="row" alignItems="center" spacing={0.5}>
+                        <Stack direction="row" alignItems="center" spacing={0.25} onClick={stopPropagation}>
                           {source ? (
-                            <IconButton
+                            <Button
                               size="small"
+                              variant="text"
                               onClick={() => setRedirectTarget({ name: item.name, source })}
-                              sx={{ color: 'gray6' }}
+                              sx={{ minWidth: 'auto', px: 1, py: 0.25, fontSize: '0.75rem' }}
                             >
-                              <EditIcon fontSize="small" />
-                            </IconButton>
+                              이동
+                            </Button>
                           ) : (
-                            <Stack direction="row" spacing={0.5}>
-                              <IconButton size="small" onClick={() => openEdit(item)} sx={{ color: 'gray6' }}>
-                                <EditIcon fontSize="small" />
-                              </IconButton>
-                              <IconButton size="small" onClick={() => setDeleting(item)} sx={{ color: 'gray6' }}>
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
+                            <Stack direction="row" spacing={0.25}>
+                              <Button
+                                size="small"
+                                variant="text"
+                                onClick={() => openEdit(item)}
+                                sx={{ minWidth: 'auto', px: 1, py: 0.25, fontSize: '0.75rem', color: 'gray8' }}
+                              >
+                                수정
+                              </Button>
+                              {!cash && (
+                                <Button
+                                  size="small"
+                                  variant="text"
+                                  onClick={() => setBuying(item)}
+                                  sx={{ minWidth: 'auto', px: 1, py: 0.25, fontSize: '0.75rem', color: 'primary.main' }}
+                                >
+                                  매수
+                                </Button>
+                              )}
+                              {!cash && (
+                                <Button
+                                  size="small"
+                                  variant="text"
+                                  onClick={() => setSelling(item)}
+                                  sx={{ minWidth: 'auto', px: 1, py: 0.25, fontSize: '0.75rem', color: 'error.main' }}
+                                >
+                                  매도
+                                </Button>
+                              )}
+                              <Button
+                                size="small"
+                                variant="text"
+                                onClick={() => setDeleting(item)}
+                                sx={{ minWidth: 'auto', px: 1, py: 0.25, fontSize: '0.75rem', color: 'gray8' }}
+                              >
+                                삭제
+                              </Button>
                             </Stack>
                           )}
                         </Stack>
@@ -315,12 +464,112 @@ export default function InvestmentsPage() {
                           <Typography sx={{ fontSize: '0.75rem', fontWeight: 600 }}>{formatCurrency(totalAmount, 'KRW')}</Typography>
                         </Stack>
                       </Stack>
+                      {expanded && item.positionId && (
+                        <Box sx={{ mx: -1.5, mb: -1, mt: 0.5 }} onClick={stopPropagation}>
+                          <PositionHistory positionId={item.positionId} />
+                        </Box>
+                      )}
                     </Stack>
                   </Paper>
                 );
               })}
             </Stack>
           )}
+        </Box>
+        {/* 매도 완료 종목 접힘 섹션 */}
+        <Box sx={{ width: '100%', mt: 2 }}>
+          <Paper
+            variant="outlined"
+            sx={{ borderColor: 'gray2', boxShadow: 'none' }}
+          >
+            <Box
+              onClick={() => setClosedOpen((v) => !v)}
+              sx={{
+                px: 2, py: 1.5,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                cursor: 'pointer',
+                '&:hover': { bgcolor: 'gray1' },
+              }}
+            >
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Typography variant="subtitle1" fontWeight={700}>매도 완료 종목</Typography>
+                <Chip
+                  label={closedPositions.length}
+                  size="small"
+                  sx={{ height: 20, fontSize: '0.7rem' }}
+                />
+              </Stack>
+              <IconButton size="small">
+                {closedOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              </IconButton>
+            </Box>
+            <Collapse in={closedOpen}>
+              <Box sx={{ borderTop: '1px solid', borderColor: 'gray2' }}>
+                {closedLoading ? (
+                  <Typography textAlign="center" color="gray5" sx={{ py: 4 }}>
+                    불러오는 중...
+                  </Typography>
+                ) : closedPositions.length === 0 ? (
+                  <Typography textAlign="center" color="gray5" sx={{ py: 4 }}>
+                    매도 완료된 종목이 없습니다.
+                  </Typography>
+                ) : (
+                  <Stack>
+                    {closedPositions.map((pos) => {
+                      const expanded = expandedClosedId === pos.id;
+                      return (
+                        <Box key={pos.id}>
+                          <Box
+                            onClick={() => setExpandedClosedId((prev) => (prev === pos.id ? null : pos.id))}
+                            sx={{
+                              px: 2, py: 1.5,
+                              display: 'grid',
+                              gridTemplateColumns: { xs: '1fr auto', sm: '1.2fr 1fr 1fr auto' },
+                              gap: { xs: 0.5, sm: 2 },
+                              alignItems: 'center',
+                              cursor: 'pointer',
+                              borderTop: '1px solid',
+                              borderColor: 'gray2',
+                              '&:hover': { bgcolor: 'gray1' },
+                              '&:first-of-type': { borderTop: 'none' },
+                            }}
+                          >
+                            <Box>
+                              <Typography fontWeight={600} sx={{ fontSize: '0.875rem' }}>
+                                {pos.stockName}
+                              </Typography>
+                              <Typography color="gray6" sx={{ fontSize: '0.7rem' }}>
+                                {pos.ticker} · {pos.category}
+                              </Typography>
+                            </Box>
+                            <Typography
+                              color="gray6"
+                              sx={{ fontSize: '0.75rem', display: { xs: 'none', sm: 'block' } }}
+                            >
+                              {pos.openedAt} ~ {pos.closedAt}
+                            </Typography>
+                            <Typography
+                              fontWeight={700}
+                              color={profitColor(pos.totalRealizedPlKrw)}
+                              sx={{ fontSize: '0.875rem', textAlign: { xs: 'right', sm: 'right' } }}
+                            >
+                              {formatProfit(pos.totalRealizedPlKrw)}
+                            </Typography>
+                            <IconButton size="small" sx={{ display: { xs: 'none', sm: 'inline-flex' } }}>
+                              {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                            </IconButton>
+                          </Box>
+                          <Collapse in={expanded}>
+                            <PositionHistory positionId={pos.id} />
+                          </Collapse>
+                        </Box>
+                      );
+                    })}
+                  </Stack>
+                )}
+              </Box>
+            </Collapse>
+          </Paper>
         </Box>
       </Stack>
 
@@ -366,6 +615,24 @@ export default function InvestmentsPage() {
         onClose={() => { setFormOpen(false); setEditing(null); }}
         onSubmit={editing ? handleEdit : handleAdd}
         initial={editing}
+      />
+
+      <SellDialog
+        open={!!selling}
+        onClose={() => setSelling(null)}
+        onSubmit={handleSell}
+        investment={selling}
+        currentPrice={selling ? prices[selling.ticker] : undefined}
+        currentExchangeRate={exchangeRate}
+      />
+
+      <BuyDialog
+        open={!!buying}
+        onClose={() => setBuying(null)}
+        onSubmit={handleBuy}
+        investment={buying}
+        currentPrice={buying ? prices[buying.ticker] : undefined}
+        currentExchangeRate={exchangeRate}
       />
     </Container>
   );

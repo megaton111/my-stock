@@ -10,6 +10,7 @@ interface MergedItem {
   avgPrice: number;
   currency: string;
   broker: string;
+  positionId?: number;
 }
 
 function toInvestment(row: Record<string, unknown>): MergedItem {
@@ -22,6 +23,7 @@ function toInvestment(row: Record<string, unknown>): MergedItem {
     avgPrice: Number(row.avg_price),
     currency: String(row.currency),
     broker: row.broker ? String(row.broker) : '',
+    positionId: row.position_id != null ? Number(row.position_id) : undefined,
   };
 }
 
@@ -150,7 +152,7 @@ function aggregateByTicker(rows: Record<string, unknown>[]) {
   return Array.from(agg.values());
 }
 
-// 새 종목 추가
+// 새 종목 추가 — positions + buy_transactions + investments를 함께 생성
 export async function POST(request: NextRequest) {
   const body = await request.json();
 
@@ -158,22 +160,72 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '필수 항목이 누락되었습니다.' }, { status: 400 });
   }
 
+  const category = body.category || '미국주식';
+  const broker = body.broker || null;
+  const today = new Date().toISOString().slice(0, 10);
+
+  // 1) position 생성 (새 보유 사이클 시작)
+  const { data: position, error: posError } = await supabase
+    .from('positions')
+    .insert({
+      user_id: body.userId,
+      ticker: body.ticker,
+      stock_name: body.name,
+      category,
+      currency: body.currency,
+      broker,
+      opened_at: today,
+    })
+    .select()
+    .single();
+
+  if (posError || !position) {
+    return NextResponse.json({ error: posError?.message || '포지션 생성 실패' }, { status: 500 });
+  }
+
+  // 2) buy_transaction 생성 (최초 매수 거래)
+  const { error: buyError } = await supabase
+    .from('buy_transactions')
+    .insert({
+      user_id: body.userId,
+      position_id: position.id,
+      ticker: body.ticker,
+      stock_name: body.name,
+      category,
+      currency: body.currency,
+      broker,
+      buy_date: today,
+      buy_quantity: body.quantity,
+      buy_price: body.avgPrice,
+      exchange_rate: body.exchangeRate ?? null,
+    });
+
+  if (buyError) {
+    // 롤백: 방금 만든 position 제거
+    await supabase.from('positions').delete().eq('id', position.id);
+    return NextResponse.json({ error: buyError.message }, { status: 500 });
+  }
+
+  // 3) investments 생성 (활성 보유 캐시)
   const { data, error } = await supabase
     .from('investments')
     .insert({
       user_id: body.userId,
       name: body.name,
       ticker: body.ticker,
-      category: body.category || '미국주식',
+      category,
       quantity: body.quantity,
       avg_price: body.avgPrice,
       currency: body.currency,
-      broker: body.broker || null,
+      broker,
+      position_id: position.id,
     })
     .select()
     .single();
 
   if (error) {
+    // 롤백: 방금 만든 position + buy_transaction 제거 (cascade로 buy도 함께 삭제됨)
+    await supabase.from('positions').delete().eq('id', position.id);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 

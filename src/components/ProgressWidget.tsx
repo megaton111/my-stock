@@ -147,7 +147,7 @@ export default function ProgressWidget() {
 
 function Section({ title, onMore, children }: { title: string; onMore: () => void; children: React.ReactNode }) {
   return (
-    <Paper sx={{ p: { xs: 1.5, sm: 3 }, boxShadow: 'none', border: '1px solid', borderColor: 'gray2' }}>
+    <Paper sx={{ p: { xs: 1.5, sm: 3 }, borderRadius: 2 }}>
       <Stack spacing={1.5}>
         <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Typography variant="body2" color="gray6" fontWeight={600}>{title}</Typography>
@@ -200,9 +200,9 @@ function MiniCard({ name, ticker, percent, current, target, overdue, onClick }: 
             <Typography fontWeight={700} fontSize={{ xs: '0.85rem', sm: '0.95rem' }} noWrap>
               {name}
             </Typography>
-            <Typography variant="caption" color="gray5" fontSize="0.7rem">
+            {/* <Typography variant="caption" color="gray5" fontSize="0.7rem">
               {ticker}
-            </Typography>
+            </Typography> */}
           </Box>
           <Typography
             fontWeight={700}

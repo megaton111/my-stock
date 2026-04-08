@@ -49,7 +49,7 @@ export default function AssetAllocationWidget({ investments, prices, exchangeRat
   if (rows.length === 0) return null;
 
   return (
-    <Paper sx={{ width: 1, p: { xs: 1.5, sm: 2 }, border: '1px solid', borderColor: 'gray2', boxShadow: 'none' }}>
+    <Paper sx={{ width: 1, height: 1, p: { xs: 1.5, sm: 2 }, borderRadius: 2 }}>
       <Typography variant="body2" color="gray5" gutterBottom>
         자산 현황
       </Typography>

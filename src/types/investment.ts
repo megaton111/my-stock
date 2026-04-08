@@ -7,6 +7,7 @@ export interface Investment {
   avgPrice: number;
   currency: 'USD' | 'KRW';
   broker?: string;
+  positionId?: number;
 }
 
 export type InvestmentInput = Omit<Investment, 'id'>;

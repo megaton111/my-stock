@@ -110,8 +110,7 @@ export default function InvestmentTable({ investments, prices, exchangeRate }: I
       {/* 데스크탑: 테이블 */}
       <TableContainer component={Paper} sx={{
         display: { xs: 'none', md: 'block' },
-        boxShadow: 'none',
-        border: (theme) => `1px solid ${theme.palette.gray2}`,
+        borderRadius: 2,
         '& .MuiTableCell-root': {
           fontSize: '0.8rem',
           padding: '8px 10px',
@@ -179,7 +178,7 @@ export default function InvestmentTable({ investments, prices, exchangeRate }: I
           return (
             <Paper
               key={item.ticker}
-              sx={{ px: 1.5, py: 1, border: '1px solid', borderColor: 'gray2', boxShadow: 'none' }}
+              sx={{ px: 1.5, py: 1, borderRadius: 2 }}
             >
               <Stack spacing={.5}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center">

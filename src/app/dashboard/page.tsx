@@ -17,6 +17,7 @@ import AssetHistoryChart from '@/components/AssetHistoryChart';
 import AssetAllocationWidget from '@/components/AssetAllocationWidget';
 import DividendWidget from '@/components/DividendWidget';
 import ProgressWidget from '@/components/ProgressWidget';
+import RealizedPlWidget from '@/components/RealizedPlWidget';
 import PageHeader from '@/components/PageHeader';
 import { useRouter } from 'next/navigation';
 
@@ -33,24 +34,80 @@ export default function DashboardPage() {
 
       {investmentsLoading ? (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-          <Stack direction="row" spacing={2} width={1}>
+          {/* SummaryCards: 3개 카드 가로 배치 */}
+          <Stack direction="row" spacing={1} width={1}>
             {[0, 1, 2].map((i) => (
-              <Skeleton key={i} variant="rectangular" animation="wave" height={108} sx={{ flex: 1 }} />
+              <Skeleton
+                key={i}
+                variant="rectangular"
+                animation="wave"
+                height={108}
+                sx={{ flex: 1, borderRadius: 1 }}
+              />
             ))}
           </Stack>
-          <Stack direction="column" width={1} spacing={1}>
-            <Skeleton variant="rectangular" animation="wave" width="100%" height={56} />
-            <Skeleton variant="rectangular" animation="wave" width="100%" height={56} />
-            <Skeleton variant="rectangular" animation="wave" width="100%" height={56} />
-            <Skeleton variant="rectangular" animation="wave" width="100%" height={56} />
-            <Skeleton variant="rectangular" animation="wave" width="100%" height={56} />
-            <Skeleton variant="rectangular" animation="wave" width="100%" height={56} />
-            <Skeleton variant="rectangular" animation="wave" width="100%" height={56} />
-            <Skeleton variant="rectangular" animation="wave" width="100%" height={56} />
-            <Skeleton variant="rectangular" animation="wave" width="100%" height={56} />
-            <Skeleton variant="rectangular" animation="wave" width="100%" height={56} />
-            <Skeleton variant="rectangular" animation="wave" width="100%" height={56} />
-            <Skeleton variant="rectangular" animation="wave" width="100%" height={56} />
+
+          {/* 실현손익 + 자산현황: PC 1:2 가로, 모바일 세로 */}
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={1}
+            width={1}
+            sx={{ alignItems: 'stretch' }}
+          >
+            <Skeleton
+              variant="rectangular"
+              animation="wave"
+              height={200}
+              sx={{ flex: { xs: 'none', md: 1 }, width: { xs: '100%', md: 'auto' }, borderRadius: 1 }}
+            />
+            <Skeleton
+              variant="rectangular"
+              animation="wave"
+              height={200}
+              sx={{ flex: { xs: 'none', md: 2 }, width: { xs: '100%', md: 'auto' }, borderRadius: 1 }}
+            />
+          </Stack>
+
+          {/* AssetHistoryChart */}
+          <Skeleton
+            variant="rectangular"
+            animation="wave"
+            width="100%"
+            height={320}
+            sx={{ borderRadius: 1 }}
+          />
+
+          {/* DividendWidget */}
+          <Skeleton
+            variant="rectangular"
+            animation="wave"
+            width="100%"
+            height={240}
+            sx={{ borderRadius: 1 }}
+          />
+
+          {/* ProgressWidget */}
+          <Skeleton
+            variant="rectangular"
+            animation="wave"
+            width="100%"
+            height={180}
+            sx={{ borderRadius: 1 }}
+          />
+
+          {/* InvestmentTable: 헤더 + 8개 행 */}
+          <Stack direction="column" width={1} spacing={0.5} sx={{ mt: 1 }}>
+            <Skeleton variant="rectangular" animation="wave" width="100%" height={40} sx={{ borderRadius: 1 }} />
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton
+                key={i}
+                variant="rectangular"
+                animation="wave"
+                width="100%"
+                height={56}
+                sx={{ borderRadius: 1 }}
+              />
+            ))}
           </Stack>
         </Box>
       ) : investments.length === 0 ? (
@@ -65,7 +122,21 @@ export default function DashboardPage() {
       ) : (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
           <SummaryCards {...summary} loading={loading} />
-          <AssetAllocationWidget investments={investments} prices={prices} exchangeRate={exchangeRate} />
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={1}
+            sx={{ width: 1, alignItems: 'stretch' }}
+          >
+            {userId && (
+              <RealizedPlWidget
+                userId={userId}
+                sx={{ flex: { xs: 'none', md: 1 }, width: { xs: '100%', md: 'auto' }, minWidth: 0, alignSelf: 'stretch' }}
+              />
+            )}
+            <Box sx={{ flex: { xs: 'none', md: 2 }, width: { xs: '100%', md: 'auto' }, display: 'flex', minWidth: 0 }}>
+              <AssetAllocationWidget investments={investments} prices={prices} exchangeRate={exchangeRate} />
+            </Box>
+          </Stack>
           {userId && <AssetHistoryChart userId={userId} />}
           <DividendWidget investments={investments} exchangeRate={exchangeRate} />
           <ProgressWidget />

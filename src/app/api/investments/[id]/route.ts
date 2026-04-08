@@ -11,6 +11,7 @@ function toInvestment(row: Record<string, unknown>) {
     avgPrice: Number(row.avg_price),
     currency: row.currency,
     broker: row.broker || '',
+    positionId: row.position_id != null ? Number(row.position_id) : undefined,
   };
 }
 
