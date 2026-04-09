@@ -45,7 +45,6 @@ interface Column {
 
 const COLUMNS: Column[] = [
   { label: '종목명', key: 'name' },
-  { label: '티커', key: 'ticker' },
   { label: '카테고리', key: 'category' },
   { label: '보유 수량', key: 'quantity', align: 'right' },
   { label: '매입가', key: 'avgPrice', align: 'right' },
@@ -275,10 +274,12 @@ export default function InvestmentsPage() {
                     }}
                     onClick={() => canExpand && toggleExpand(item)}
                   >
-                    <TableCell sx={{ fontWeight: 600 }}>{item.name}</TableCell>
-                    <TableCell sx={{ color: 'gray6' }}>{cash ? '-' : item.ticker}</TableCell>
                     <TableCell>
-                      <Chip label={item.category} size="small" variant="outlined" />
+                      <Typography fontWeight={600} fontSize="0.8rem" lineHeight={1.25}>{item.name}</Typography>
+                      <Typography color="gray6" fontSize="0.65rem" lineHeight={1.2}>{cash ? '현금' : item.ticker}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip label={item.category} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.65rem' }} />
                     </TableCell>
                     <TableCell align="right">
                       {cash ? formatCurrency(item.quantity, item.currency) : item.quantity.toLocaleString()}
