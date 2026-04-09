@@ -16,5 +16,7 @@ export interface PriceResult {
   symbol: string;
   price?: number;
   currency?: string;
+  previousClose?: number;
+  changePercent?: number;
   error?: string;
 }

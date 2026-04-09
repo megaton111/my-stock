@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/portfolio-snapshot",
       "schedule": "0 22 * * *"
+    },
+    {
+      "path": "/api/cron/krx-sync",
+      "schedule": "30 0 * * *"
     }
   ]
 }

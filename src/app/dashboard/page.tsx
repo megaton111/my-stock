@@ -14,6 +14,7 @@ import { calcPortfolioSummary } from '@/utils/calculator';
 import SummaryCards from '@/components/SummaryCards';
 import InvestmentTable from '@/components/InvestmentTable';
 import AssetHistoryChart from '@/components/AssetHistoryChart';
+import WatchlistWidget from '@/components/WatchlistWidget';
 import AssetAllocationWidget from '@/components/AssetAllocationWidget';
 import DividendWidget from '@/components/DividendWidget';
 import ProgressWidget from '@/components/ProgressWidget';
@@ -138,6 +139,7 @@ export default function DashboardPage() {
             </Box>
           </Stack>
           {userId && <AssetHistoryChart userId={userId} />}
+          {userId && <WatchlistWidget userId={userId} />}
           <DividendWidget investments={investments} exchangeRate={exchangeRate} />
           <ProgressWidget />
           <InvestmentTable

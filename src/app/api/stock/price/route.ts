@@ -14,6 +14,8 @@ interface YahooChartResponse {
       meta: {
         regularMarketPrice: number;
         currency: string;
+        chartPreviousClose?: number;
+        previousClose?: number;
       };
     }>;
   };
@@ -46,10 +48,19 @@ export async function GET(request: NextRequest) {
           const result = data.chart?.result?.[0];
           
           if (result && result.meta?.regularMarketPrice) {
-            return { 
-              symbol, 
-              price: result.meta.regularMarketPrice,
-              currency: result.meta.currency 
+            const price = result.meta.regularMarketPrice;
+            const previousClose =
+              result.meta.chartPreviousClose ?? result.meta.previousClose;
+            const changePercent =
+              previousClose && previousClose > 0
+                ? ((price - previousClose) / previousClose) * 100
+                : undefined;
+            return {
+              symbol,
+              price,
+              currency: result.meta.currency,
+              previousClose,
+              changePercent,
             };
           }
           return { symbol, error: 'Price metadata missing' };
