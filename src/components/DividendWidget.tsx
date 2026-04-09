@@ -139,7 +139,7 @@ export default function DividendWidget({ investments, exchangeRate }: DividendWi
         {/* 헤더 */}
         <Stack direction="row" alignItems="center" spacing={1}>
           {/* <PaidIcon sx={{ fontSize: 20, color: 'warning.main' }} /> */}
-          <Typography variant="body2" color="gray6" fontWeight={600}>
+          <Typography variant="body2" color="gray6">
             배당 현황
           </Typography>
         </Stack>

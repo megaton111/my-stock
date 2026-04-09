@@ -10,7 +10,6 @@ import {
   IconButton,
   CircularProgress,
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { formatRate, profitColor } from '@/utils/format';
@@ -24,6 +23,12 @@ function formatPrice(price: number, currency?: string) {
   if (currency === 'KRW') return `${Math.floor(price).toLocaleString()}원`;
   if (currency === 'USD') return `$${price.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
   return price.toLocaleString(undefined, { maximumFractionDigits: 4 });
+}
+
+// 한국 주식(.KS/.KQ)은 종목명, 그 외(미국/코인)는 티커를 타이틀로 사용
+function getCardTitle(ticker: string, stockName: string): string {
+  const isKorean = ticker.endsWith('.KS') || ticker.endsWith('.KQ');
+  return isKorean ? stockName : ticker.replace(/-USD$/, '');
 }
 
 export default function WatchlistWidget({ userId }: WatchlistWidgetProps) {
@@ -58,55 +63,76 @@ export default function WatchlistWidget({ userId }: WatchlistWidgetProps) {
           </Typography>
         </Box>
       ) : (
-        <Stack divider={<Box sx={{ borderBottom: 1, borderColor: 'divider' }} />}>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: {
+              xs: 'repeat(2, 1fr)',
+              sm: 'repeat(3, 1fr)',
+              md: 'repeat(4, 1fr)',
+              lg: 'repeat(5, 1fr)',
+            },
+            gap: 1,
+          }}
+        >
           {items.map((item) => {
             const quote = quotes[item.ticker];
             const change = quote?.changePercent;
+            const title = getCardTitle(item.ticker, item.stockName);
             return (
-              <Stack
+              <Paper
                 key={item.id}
-                direction="row"
-                alignItems="center"
-                justifyContent="space-between"
                 onMouseEnter={() => setHoverId(item.id)}
                 onMouseLeave={() => setHoverId(null)}
-                sx={{ py: 1.25, px: 0.5, position: 'relative' }}
+                sx={{
+                  position: 'relative',
+                  px: 1.5,
+                  py: 1.25,
+                  border: '1px solid',
+                  borderColor: 'gray2',
+                  boxShadow: 'none',
+                  transition: 'border-color 0.2s, transform 0.2s',
+                  '&:hover': {
+                    borderColor: 'primary.main',
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+                  },
+                }}
               >
-                <Box sx={{ minWidth: 0, flex: 1 }}>
+                <Stack spacing={0.25}>
+                  <Typography variant="body2" fontWeight={700} noWrap>
+                    {title}
+                  </Typography>
                   <Typography variant="body2" fontWeight={600} noWrap>
-                    {item.stockName}
+                    {quote?.price != null ? formatPrice(quote.price, quote.currency) : '-'}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {item.ticker}
+                  <Typography
+                    variant="caption"
+                    sx={{ color: change != null ? profitColor(change) : 'text.disabled' }}
+                  >
+                    {change != null ? formatRate(change) : '-'}
                   </Typography>
-                </Box>
-                <Stack direction="row" spacing={2} alignItems="center">
-                  <Box sx={{ textAlign: 'right' }}>
-                    <Typography variant="body2" fontWeight={600}>
-                      {quote?.price != null ? formatPrice(quote.price, quote.currency) : '-'}
-                    </Typography>
-                    {change != null && (
-                      <Typography variant="caption" sx={{ color: profitColor(change) }}>
-                        {formatRate(change)}
-                      </Typography>
-                    )}
-                  </Box>
-                  <Box sx={{ width: 28, display: 'flex', justifyContent: 'center' }}>
-                    {hoverId === item.id && (
-                      <IconButton
-                        size="small"
-                        onClick={() => remove(item.id)}
-                        aria-label="삭제"
-                      >
-                        <CloseIcon fontSize="small" />
-                      </IconButton>
-                    )}
-                  </Box>
                 </Stack>
-              </Stack>
+                {hoverId === item.id && (
+                  <IconButton
+                    size="small"
+                    onClick={() => remove(item.id)}
+                    aria-label="삭제"
+                    sx={{
+                      position: 'absolute',
+                      top: 2,
+                      right: 2,
+                      bgcolor: 'background.paper',
+                      '&:hover': { bgcolor: 'gray1' },
+                    }}
+                  >
+                    <CloseIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                )}
+              </Paper>
             );
           })}
-        </Stack>
+        </Box>
       )}
 
       <WatchlistAddDialog
