@@ -31,7 +31,7 @@ interface SearchResult {
 interface WatchlistAddDialogProps {
   open: boolean;
   onClose: () => void;
-  onAdd: (ticker: string, stockName: string) => Promise<void>;
+  onAdd: (ticker: string, stockName: string, exchange?: string, stockType?: string) => Promise<void>;
 }
 
 const MARKET_PLACEHOLDER: Record<Market, string> = {
@@ -100,7 +100,7 @@ export default function WatchlistAddDialog({ open, onClose, onAdd }: WatchlistAd
     setSubmitting(item.symbol);
     setError('');
     try {
-      await onAdd(item.symbol, item.name);
+      await onAdd(item.symbol, item.name, item.exchange, item.type);
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : '등록 실패');

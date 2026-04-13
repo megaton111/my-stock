@@ -7,6 +7,9 @@ export interface WatchlistItem {
   id: string;
   ticker: string;
   stockName: string;
+  exchange?: string;
+  stockType?: string;
+  naverCode?: string;
 }
 
 export interface WatchlistQuote {
@@ -104,12 +107,12 @@ export function useWatchlist(userId: string | null): UseWatchlistResult {
   }, [items, fetchQuotes]);
 
   const add = useCallback(
-    async (ticker: string, stockName: string) => {
+    async (ticker: string, stockName: string, exchange?: string, stockType?: string) => {
       if (!userId) return;
       const res = await fetch('/api/watchlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, ticker, stockName }),
+        body: JSON.stringify({ userId, ticker, stockName, exchange, stockType }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
