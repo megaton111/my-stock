@@ -10,6 +10,7 @@ import ListAltIcon from '@mui/icons-material/ListAlt';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import SavingsIcon from '@mui/icons-material/Savings';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
 import PolicyIcon from '@mui/icons-material/Policy';
@@ -21,6 +22,7 @@ const MENU_ITEMS = [
   { label: '투자내역 관리', path: '/investments', icon: <ListAltIcon fontSize="small" /> },
   { label: '주식 모으기', path: '/collect', icon: <SavingsIcon fontSize="small" /> },
   { label: '적립식 매수', path: '/dca', icon: <CalendarMonthIcon fontSize="small" /> },
+  { label: 'MDD 분석', path: '/mdd', icon: <TrendingDownIcon fontSize="small" /> },
   { label: '주식정보', path: '/market', icon: <ShowChartIcon fontSize="small" /> },
   // { label: '설정', path: '/settings', icon: <SettingsIcon fontSize="small" /> },
 ];
