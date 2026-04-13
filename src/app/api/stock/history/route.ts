@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: '종목 심볼을 입력해주세요.' }, { status: 400 });
   }
 
-  const validRanges = ['1y', '2y', '3y', '5y', 'max'];
+  const validRanges = ['1y', '2y', '3y', '5y', '10y', 'max'];
   if (!validRanges.includes(range)) {
     return NextResponse.json({ error: '유효하지 않은 기간입니다.' }, { status: 400 });
   }

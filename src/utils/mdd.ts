@@ -86,6 +86,28 @@ export function calculateAth(history: Point[]): AthResult | null {
   return { allTimeHigh: maxPrice, athDate: history[maxIdx].date };
 }
 
+export function calculateAvgAnnualMdd(history: Point[]): number | null {
+  if (history.length < 2) return null;
+
+  // 연도별로 그룹핑
+  const byYear = new Map<string, Point[]>();
+  for (const p of history) {
+    const year = p.date.slice(0, 4);
+    if (!byYear.has(year)) byYear.set(year, []);
+    byYear.get(year)!.push(p);
+  }
+
+  const mdds: number[] = [];
+  for (const points of byYear.values()) {
+    if (points.length < 2) continue;
+    const result = calculateMdd(points);
+    if (result) mdds.push(result.mdd);
+  }
+
+  if (mdds.length === 0) return null;
+  return mdds.reduce((a, b) => a + b, 0) / mdds.length;
+}
+
 export function calculateDrawdownSeries(history: Point[]): DrawdownPoint[] {
   if (history.length < 2) return [];
 

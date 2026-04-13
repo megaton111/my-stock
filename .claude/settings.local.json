@@ -1,8 +1,12 @@
 {
-  "outputStyle": "Explanatory",
   "permissions": {
     "allow": [
-      "Bash(pnpm build:*)"
+      "Bash(pnpm build:*)",
+      "Bash(curl -s \"https://api.stock.naver.com/stock/QLD/basic\" -H \"User-Agent: Mozilla/5.0\" -H \"Accept: application/json\")",
+      "Bash(curl -s \"https://stock.naver.com/crypto/UPBIT/BTC\" -H \"User-Agent: Mozilla/5.0\")",
+      "Bash(grep -oP '\"code\":\"[A-Z]{2,10}\"')",
+      "Bash(pnpm lint:*)"
     ]
-  }
+  },
+  "outputStyle": "Explanatory"
 }

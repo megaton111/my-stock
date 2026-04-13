@@ -32,6 +32,7 @@ interface WatchlistAddDialogProps {
   open: boolean;
   onClose: () => void;
   onAdd: (ticker: string, stockName: string, exchange?: string, stockType?: string) => Promise<void>;
+  title?: string;
 }
 
 const MARKET_PLACEHOLDER: Record<Market, string> = {
@@ -46,7 +47,7 @@ const MARKET_EMPTY_HINT: Record<Market, string> = {
   CRYPTO: '코인 이름 또는 티커를 입력하세요.',
 };
 
-export default function WatchlistAddDialog({ open, onClose, onAdd }: WatchlistAddDialogProps) {
+export default function WatchlistAddDialog({ open, onClose, onAdd, title = '관심종목 추가' }: WatchlistAddDialogProps) {
   const [market, setMarket] = useState<Market>('KR');
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -111,7 +112,7 @@ export default function WatchlistAddDialog({ open, onClose, onAdd }: WatchlistAd
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>관심종목 추가</DialogTitle>
+      <DialogTitle>{title}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           <ToggleButtonGroup

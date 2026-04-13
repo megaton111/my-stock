@@ -1,31 +1,31 @@
 'use client';
 
-import { useState, useCallback, Fragment } from 'react';
+import { useState, useCallback } from 'react';
 import {
-  Container, Box, Paper, Stack, Typography, TextField, Button,
-  ToggleButton, ToggleButtonGroup, CircularProgress, Collapse,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  IconButton,
+  Container, Box, Paper, Stack, Typography, Button,
+  ToggleButton, ToggleButtonGroup, Collapse, IconButton,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
-import BarChartIcon from '@mui/icons-material/BarChart';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ReferenceLine,
 } from 'recharts';
 import PageHeader from '@/components/PageHeader';
-import { calculateMdd, calculateAth, calculateDrawdownSeries, MddResult, AthResult, Point, DrawdownPoint } from '@/utils/mdd';
+import WatchlistAddDialog from '@/components/WatchlistAddDialog';
+import { calculateMdd, calculateAth, calculateAvgAnnualMdd, calculateDrawdownSeries, MddResult, AthResult, Point, DrawdownPoint } from '@/utils/mdd';
 import { formatRate, profitColor } from '@/utils/format';
 
-type Range = '1y' | '2y' | '3y' | '5y' | 'max';
+type Range = '1y' | '2y' | '3y' | '5y' | '10y';
 
 const RANGE_LABEL: Record<Range, string> = {
   '1y': '1Y',
   '2y': '2Y',
   '3y': '3Y',
   '5y': '5Y',
-  max: '전체',
+  '10y': '10Y',
 };
 
 interface MddRow {
@@ -35,8 +35,9 @@ interface MddRow {
   range: Range;
   result: MddResult;
   drawdownSeries: DrawdownPoint[];
-  ath: AthResult;       // 전체 기간 최고가 (고정)
-  athDrawdown: number;  // 최고가 대비 현재 하락율
+  ath: AthResult;
+  athDrawdown: number;
+  avgMdd: number | null;
   loading?: boolean;
 }
 
@@ -64,7 +65,7 @@ function MddChart({ data, mdd }: { data: DrawdownPoint[]; mdd: number }) {
   const mddPercent = Math.round(mdd * 10000) / 100;
 
   return (
-    <Box sx={{ width: '100%', height: 200, mt: 1, mb: 1 }}>
+    <Box sx={{ width: '100%', height: 200, mt: 2 }}>
       <ResponsiveContainer>
         <AreaChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 10 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
@@ -81,6 +82,13 @@ function MddChart({ data, mdd }: { data: DrawdownPoint[]; mdd: number }) {
           />
           <Tooltip
             formatter={(value) => [`${Number(value).toFixed(2)}%`, 'Drawdown']}
+            labelFormatter={(_, payload) => {
+              if (payload?.[0]?.payload?.date) {
+                const [y, m, d] = payload[0].payload.date.split('-');
+                return `${y.slice(2)}.${m}.${d}`;
+              }
+              return '';
+            }}
             contentStyle={{ fontSize: 12 }}
           />
           <ReferenceLine
@@ -102,64 +110,73 @@ function MddChart({ data, mdd }: { data: DrawdownPoint[]; mdd: number }) {
   );
 }
 
-export default function MddPage() {
-  const [ticker, setTicker] = useState('');
-  const [rows, setRows] = useState<MddRow[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [expandedChart, setExpandedChart] = useState<string | null>(null);
+function DataCell({ label, value, color }: { label: string; value: string; color?: string }) {
+  return (
+    <Box>
+      <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2 }}>
+        {label}
+      </Typography>
+      <Typography variant="body2" fontWeight={600} sx={{ color, lineHeight: 1.4 }}>
+        {value}
+      </Typography>
+    </Box>
+  );
+}
 
-  const toggleChart = (symbol: string) => {
-    setExpandedChart((prev) => (prev === symbol ? null : symbol));
+export default function MddPage() {
+  const [rows, setRows] = useState<MddRow[]>([]);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [expandedSet, setExpandedSet] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (symbol: string) => {
+    setExpandedSet((prev) => {
+      const next = new Set(prev);
+      if (next.has(symbol)) next.delete(symbol);
+      else next.add(symbol);
+      return next;
+    });
   };
 
-  const handleAdd = useCallback(async () => {
+  const handleAdd = useCallback(async (ticker: string) => {
     const symbol = ticker.trim().toUpperCase();
     if (!symbol) return;
 
     if (rows.some((r) => r.symbol === symbol)) {
-      setError('이미 추가된 종목입니다.');
-      return;
+      throw new Error('이미 추가된 종목입니다.');
     }
 
-    setLoading(true);
-    setError('');
+    const [maxData, rangeData] = await Promise.all([
+      fetchHistory(symbol, 'max'),
+      fetchHistory(symbol, '1y'),
+    ]);
 
-    try {
-      // 전체 기간 + 1Y 동시 조회
-      const [maxData, rangeData] = await Promise.all([
-        fetchHistory(symbol, 'max'),
-        fetchHistory(symbol, '1y'),
-      ]);
+    const rangeHistory = rangeData.history as Point[];
+    const ath = calculateAth(maxData.history as Point[]);
+    const result = calculateMdd(rangeHistory);
+    const drawdownSeries = calculateDrawdownSeries(rangeHistory);
+    const avgMdd = calculateAvgAnnualMdd(rangeHistory);
 
-      const ath = calculateAth(maxData.history as Point[]);
-      const result = calculateMdd(rangeData.history as Point[]);
-      const drawdownSeries = calculateDrawdownSeries(rangeData.history as Point[]);
+    if (!ath || !result) throw new Error('데이터가 부족합니다.');
 
-      if (!ath || !result) throw new Error('데이터가 부족합니다.');
+    const athDrawdown = (result.latest - ath.allTimeHigh) / ath.allTimeHigh;
+    const resolvedSymbol = maxData.symbol as string;
 
-      const athDrawdown = (result.latest - ath.allTimeHigh) / ath.allTimeHigh;
-
-      setRows((prev) => [
-        ...prev,
-        {
-          symbol: maxData.symbol,
-          name: maxData.name,
-          currency: maxData.currency,
-          range: '1y',
-          result,
-          drawdownSeries,
-          ath,
-          athDrawdown,
-        },
-      ]);
-      setTicker('');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '오류가 발생했습니다.');
-    } finally {
-      setLoading(false);
-    }
-  }, [ticker, rows]);
+    setRows((prev) => [
+      ...prev,
+      {
+        symbol: resolvedSymbol,
+        name: maxData.name,
+        currency: maxData.currency,
+        range: '1y',
+        result,
+        drawdownSeries,
+        ath,
+        athDrawdown,
+        avgMdd,
+      },
+    ]);
+    setExpandedSet((prev) => new Set(prev).add(resolvedSymbol));
+  }, [rows]);
 
   const handleRangeChange = useCallback(async (symbol: string, newRange: Range) => {
     setRows((prev) => prev.map((r) => r.symbol === symbol ? { ...r, loading: true } : r));
@@ -169,6 +186,7 @@ export default function MddPage() {
       const history = data.history as Point[];
       const result = calculateMdd(history);
       const drawdownSeries = calculateDrawdownSeries(history);
+      const avgMdd = calculateAvgAnnualMdd(history);
 
       if (!result) throw new Error('데이터 부족');
 
@@ -176,7 +194,7 @@ export default function MddPage() {
         prev.map((r) => {
           if (r.symbol !== symbol) return r;
           const athDrawdown = (result.latest - r.ath.allTimeHigh) / r.ath.allTimeHigh;
-          return { ...r, range: newRange, result, drawdownSeries, athDrawdown, loading: false };
+          return { ...r, range: newRange, result, drawdownSeries, athDrawdown, avgMdd, loading: false };
         }),
       );
     } catch {
@@ -186,254 +204,155 @@ export default function MddPage() {
 
   const handleRemove = (symbol: string) => {
     setRows((prev) => prev.filter((r) => r.symbol !== symbol));
-    if (expandedChart === symbol) setExpandedChart(null);
+    setExpandedSet((prev) => {
+      const next = new Set(prev);
+      next.delete(symbol);
+      return next;
+    });
   };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !loading) handleAdd();
-  };
-
-  const rangeToggle = (symbol: string, currentRange: Range, isLoading?: boolean) => (
-    <ToggleButtonGroup
-      value={currentRange}
-      exclusive
-      size="small"
-      disabled={isLoading}
-      onChange={(_, v) => v && handleRangeChange(symbol, v)}
-      sx={{ '& .MuiToggleButton-root': { px: 0.8, py: 0.2, fontSize: '0.7rem' } }}
-    >
-      <ToggleButton value="1y">1Y</ToggleButton>
-      <ToggleButton value="2y">2Y</ToggleButton>
-      <ToggleButton value="3y">3Y</ToggleButton>
-      <ToggleButton value="5y">5Y</ToggleButton>
-      <ToggleButton value="max">전체</ToggleButton>
-    </ToggleButtonGroup>
-  );
 
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 4 } }}>
+    <Container maxWidth="md" sx={{ py: { xs: 2, sm: 4 } }}>
       <PageHeader />
       <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
         MDD 분석
       </Typography>
 
-      {/* 입력 영역 */}
-      <Paper sx={{ p: { xs: 1.5, sm: 3 }, mb: 2, borderRadius: 2 }}>
-        <Stack direction="row" spacing={1}>
-          <TextField
-            size="small"
-            placeholder="티커 입력 (예: AAPL, 005930.KS)"
-            value={ticker}
-            onChange={(e) => setTicker(e.target.value)}
-            onKeyDown={handleKeyDown}
-            sx={{ flex: 1 }}
-          />
-          <Button
-            variant="contained"
-            onClick={handleAdd}
-            disabled={loading || !ticker.trim()}
-          >
-            {loading ? <CircularProgress size={20} /> : '추가'}
-          </Button>
-        </Stack>
-        {error && (
-          <Typography variant="body2" color="error" sx={{ mt: 1 }}>
-            {error}
-          </Typography>
-        )}
-      </Paper>
+      <Box sx={{ mb: 2 }}>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => setDialogOpen(true)}
+        >
+          종목 추가
+        </Button>
+      </Box>
 
-      {/* 결과 영역 */}
-      {rows.length > 0 && (
-        <>
-          {/* PC: 테이블 */}
-          <TableContainer
-            component={Paper}
-            sx={{
-              display: { xs: 'none', md: 'block' },
-              borderRadius: 2,
-              '& .MuiTableCell-root': { fontSize: '0.8rem', whiteSpace: 'nowrap' },
-            }}
-          >
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>종목명</TableCell>
-                  <TableCell align="right">최고가</TableCell>
-                  <TableCell align="right">현재가</TableCell>
-                  <TableCell align="right">고점대비</TableCell>
-                  <TableCell align="right">연초가</TableCell>
-                  <TableCell align="right">연초대비</TableCell>
-                  <TableCell align="right">MDD</TableCell>
-                  <TableCell align="center">고점일(가격)</TableCell>
-                  <TableCell align="center">저점일(가격)</TableCell>
-                  <TableCell align="center">기간</TableCell>
-                  <TableCell align="center" sx={{ width: 80 }} />
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {rows.map((row) => {
-                  const r = row.result;
-                  const isExpanded = expandedChart === row.symbol;
-                  return (
-                    <Fragment key={row.symbol}>
-                      <TableRow hover sx={{ opacity: row.loading ? 0.5 : 1 }}>
-                        <TableCell>{row.name}</TableCell>
-                        <TableCell align="right">
-                          {formatPrice(row.ath.allTimeHigh, row.currency)}
-                        </TableCell>
-                        <TableCell align="right">
-                          {formatPrice(r.latest, row.currency)}
-                        </TableCell>
-                        <TableCell align="right" sx={{ color: profitColor(row.athDrawdown) }}>
-                          {formatRate(row.athDrawdown * 100)}
-                        </TableCell>
-                        <TableCell align="right">
-                          {formatPrice(r.ytdStart, row.currency)}
-                        </TableCell>
-                        <TableCell align="right" sx={{ color: profitColor(r.ytdReturn) }}>
-                          {formatRate(r.ytdReturn * 100)}
-                        </TableCell>
-                        <TableCell align="right" sx={{ color: 'primary.main', fontWeight: 700 }}>
-                          {RANGE_LABEL[row.range]} {formatRate(r.mdd * 100)}
-                        </TableCell>
-                        <TableCell align="center">
-                          {formatShortDate(r.peakDate)} ({formatPrice(r.peakPrice, row.currency)})
-                        </TableCell>
-                        <TableCell align="center">
-                          {formatShortDate(r.troughDate)} ({formatPrice(r.troughPrice, row.currency)})
-                        </TableCell>
-                        <TableCell align="center">
-                          {rangeToggle(row.symbol, row.range, row.loading)}
-                        </TableCell>
-                        <TableCell align="center">
-                          <Stack direction="row" spacing={0.5}>
-                            <IconButton
-                              size="small"
-                              onClick={() => toggleChart(row.symbol)}
-                              color={isExpanded ? 'primary' : 'default'}
-                            >
-                              <BarChartIcon fontSize="small" />
-                            </IconButton>
-                            <IconButton size="small" onClick={() => handleRemove(row.symbol)}>
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </Stack>
-                        </TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell colSpan={11} sx={{ py: 0, borderBottom: isExpanded ? undefined : 'none' }}>
-                          <Collapse in={isExpanded} unmountOnExit>
-                            <MddChart data={row.drawdownSeries} mdd={row.result.mdd} />
-                          </Collapse>
-                        </TableCell>
-                      </TableRow>
-                    </Fragment>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
+      <WatchlistAddDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        onAdd={handleAdd}
+        title="종목 추가"
+      />
 
-          {/* 모바일: 카드 */}
-          <Box
-            sx={{
-              display: { xs: 'grid', md: 'none' },
-              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-              gap: 1,
-            }}
-          >
-            {rows.map((row) => {
-              const r = row.result;
-              const isExpanded = expandedChart === row.symbol;
-              return (
-                <Paper
-                  key={row.symbol}
-                  sx={{ p: 1.5, borderRadius: 2, position: 'relative', opacity: row.loading ? 0.5 : 1 }}
-                >
-                  <Stack direction="row" spacing={0.5} sx={{ position: 'absolute', top: 4, right: 4 }}>
-                    <IconButton
-                      size="small"
-                      onClick={() => toggleChart(row.symbol)}
-                      color={isExpanded ? 'primary' : 'default'}
-                    >
-                      <BarChartIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" onClick={() => handleRemove(row.symbol)}>
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Stack>
+      <Stack spacing={1.5}>
+        {rows.map((row) => {
+          const r = row.result;
+          const isExpanded = expandedSet.has(row.symbol);
 
-                  <Typography variant="body2" fontWeight={700}>
+          return (
+            <Paper
+              key={row.symbol}
+              sx={{ borderRadius: 2, overflow: 'hidden', opacity: row.loading ? 0.5 : 1 }}
+            >
+              {/* 헤더 */}
+              <Stack
+                direction="row"
+                alignItems="center"
+                sx={{ px: 2, py: 1.2, cursor: 'pointer' }}
+                onClick={() => toggleExpand(row.symbol)}
+              >
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography variant="body1" fontWeight={700} noWrap>
                     {row.name}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
                     {row.symbol}
                   </Typography>
+                </Box>
 
-                  <Box sx={{ mt: 1, mb: 1 }}>
-                    {rangeToggle(row.symbol, row.range, row.loading)}
+                <Stack direction="row" alignItems="center" spacing={0.5}>
+                  <Box onClick={(e) => e.stopPropagation()}>
+                    <ToggleButtonGroup
+                      value={row.range}
+                      exclusive
+                      size="small"
+                      disabled={row.loading}
+                      onChange={(_, v) => v && handleRangeChange(row.symbol, v)}
+                      sx={{ '& .MuiToggleButton-root': { px: 0.8, py: 0.2, fontSize: '0.7rem' } }}
+                    >
+                      <ToggleButton value="1y">1Y</ToggleButton>
+                      <ToggleButton value="2y">2Y</ToggleButton>
+                      <ToggleButton value="3y">3Y</ToggleButton>
+                      <ToggleButton value="5y">5Y</ToggleButton>
+                      <ToggleButton value="10y">10Y</ToggleButton>
+                    </ToggleButtonGroup>
+                  </Box>
+                  <IconButton
+                    size="small"
+                    onClick={(e) => { e.stopPropagation(); handleRemove(row.symbol); }}
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton size="small">
+                    <ExpandMoreIcon
+                      fontSize="small"
+                      sx={{
+                        transition: 'transform 0.2s',
+                        transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                      }}
+                    />
+                  </IconButton>
+                </Stack>
+              </Stack>
+
+              {/* 본문 */}
+              <Collapse in={isExpanded} unmountOnExit>
+                <Box sx={{ px: 2, pb: 2 }}>
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' },
+                      gap: 1.5,
+                    }}
+                  >
+                    <DataCell label="최고가" value={formatPrice(row.ath.allTimeHigh, row.currency)} />
+                    <DataCell label="현재가" value={formatPrice(r.latest, row.currency)} />
+                    <DataCell
+                      label="고점대비"
+                      value={formatRate(row.athDrawdown * 100)}
+                      color={profitColor(row.athDrawdown)}
+                    />
+                    <DataCell
+                      label={`MDD (${RANGE_LABEL[row.range]})`}
+                      value={formatRate(r.mdd * 100)}
+                      color="var(--mui-palette-primary-main)"
+                    />
+                    <DataCell label="연초가" value={formatPrice(r.ytdStart, row.currency)} />
+                    <DataCell
+                      label="연초대비"
+                      value={formatRate(r.ytdReturn * 100)}
+                      color={profitColor(r.ytdReturn)}
+                    />
+                    <DataCell
+                      label="고점일"
+                      value={`${formatShortDate(r.peakDate)} (${formatPrice(r.peakPrice, row.currency)})`}
+                    />
+                    <DataCell
+                      label="저점일"
+                      value={`${formatShortDate(r.troughDate)} (${formatPrice(r.troughPrice, row.currency)})`}
+                    />
+                    {row.avgMdd !== null && (
+                      <DataCell
+                        label={`평균 MDD (${RANGE_LABEL[row.range]})`}
+                        value={formatRate(row.avgMdd * 100)}
+                        color="var(--mui-palette-primary-main)"
+                      />
+                    )}
                   </Box>
 
-                  <Stack spacing={0.5}>
-                    <Stack direction="row" justifyContent="space-between">
-                      <Typography variant="caption" color="text.secondary">최고가</Typography>
-                      <Typography variant="body2">{formatPrice(row.ath.allTimeHigh, row.currency)}</Typography>
-                    </Stack>
-                    <Stack direction="row" justifyContent="space-between">
-                      <Typography variant="caption" color="text.secondary">현재가</Typography>
-                      <Typography variant="body2">{formatPrice(r.latest, row.currency)}</Typography>
-                    </Stack>
-                    <Stack direction="row" justifyContent="space-between">
-                      <Typography variant="caption" color="text.secondary">고점대비</Typography>
-                      <Typography variant="body2" sx={{ color: profitColor(row.athDrawdown) }}>
-                        {formatRate(row.athDrawdown * 100)}
-                      </Typography>
-                    </Stack>
-                    <Stack direction="row" justifyContent="space-between">
-                      <Typography variant="caption" color="text.secondary">연초가</Typography>
-                      <Typography variant="body2">{formatPrice(r.ytdStart, row.currency)}</Typography>
-                    </Stack>
-                    <Stack direction="row" justifyContent="space-between">
-                      <Typography variant="caption" color="text.secondary">연초대비</Typography>
-                      <Typography variant="body2" sx={{ color: profitColor(r.ytdReturn) }}>
-                        {formatRate(r.ytdReturn * 100)}
-                      </Typography>
-                    </Stack>
-                    <Stack direction="row" justifyContent="space-between">
-                      <Typography variant="caption" color="text.secondary">MDD ({RANGE_LABEL[row.range]})</Typography>
-                      <Typography variant="body2" fontWeight={700} sx={{ color: 'primary.main' }}>
-                        {formatRate(r.mdd * 100)}
-                      </Typography>
-                    </Stack>
-                    <Stack direction="row" justifyContent="space-between">
-                      <Typography variant="caption" color="text.secondary">고점</Typography>
-                      <Typography variant="body2">
-                        {formatShortDate(r.peakDate)} ({formatPrice(r.peakPrice, row.currency)})
-                      </Typography>
-                    </Stack>
-                    <Stack direction="row" justifyContent="space-between">
-                      <Typography variant="caption" color="text.secondary">저점</Typography>
-                      <Typography variant="body2">
-                        {formatShortDate(r.troughDate)} ({formatPrice(r.troughPrice, row.currency)})
-                      </Typography>
-                    </Stack>
-                  </Stack>
-
-                  <Collapse in={isExpanded} unmountOnExit>
-                    <MddChart data={row.drawdownSeries} mdd={row.result.mdd} />
-                  </Collapse>
-                </Paper>
-              );
-            })}
-          </Box>
-        </>
-      )}
+                  <MddChart data={row.drawdownSeries} mdd={r.mdd} />
+                </Box>
+              </Collapse>
+            </Paper>
+          );
+        })}
+      </Stack>
 
       {rows.length === 0 && (
         <Paper sx={{ p: 6, borderRadius: 2, textAlign: 'center' }}>
           <Typography variant="body2" color="text.secondary">
-            티커를 입력하여 종목의 MDD를 분석해보세요.
+            종목을 추가하여 MDD를 분석해보세요.
           </Typography>
         </Paper>
       )}
