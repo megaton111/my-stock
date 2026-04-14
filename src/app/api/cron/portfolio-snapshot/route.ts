@@ -69,17 +69,28 @@ export async function GET(request: NextRequest) {
   const exchangeRate = priceMap[EXCHANGE_RATE_SYMBOL] || DEFAULT_EXCHANGE_RATE;
 
   // 사용자별 포트폴리오 계산
-  const userSummary = new Map<number, { totalInvested: number; totalValue: number }>();
+  const userSummary = new Map<number, {
+    totalInvested: number; totalValue: number;
+    financialValue: number; cashValue: number;
+  }>();
 
   for (const inv of investments) {
     const factor = inv.currency === 'USD' ? exchangeRate : 1;
     const invested = inv.avg_price * inv.quantity * factor;
     const price = priceMap[inv.ticker] ?? inv.avg_price;
     const value = price * inv.quantity * factor;
+    const isCashItem = inv.ticker.startsWith('CASH-');
 
-    const prev = userSummary.get(inv.user_id) ?? { totalInvested: 0, totalValue: 0 };
+    const prev = userSummary.get(inv.user_id) ?? {
+      totalInvested: 0, totalValue: 0, financialValue: 0, cashValue: 0,
+    };
     prev.totalInvested += invested;
     prev.totalValue += value;
+    if (isCashItem) {
+      prev.cashValue += value;
+    } else {
+      prev.financialValue += value;
+    }
     userSummary.set(inv.user_id, prev);
   }
 
@@ -89,6 +100,8 @@ export async function GET(request: NextRequest) {
     date: kstDate,
     total_invested: Math.round(s.totalInvested * 100) / 100,
     total_value: Math.round(s.totalValue * 100) / 100,
+    financial_value: Math.round(s.financialValue * 100) / 100,
+    cash_value: Math.round(s.cashValue * 100) / 100,
     exchange_rate: Math.round(exchangeRate * 100) / 100,
   }));
 

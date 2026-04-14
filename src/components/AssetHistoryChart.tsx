@@ -21,6 +21,8 @@ interface Snapshot {
   total_invested: number;
   total_value: number;
   exchange_rate: number;
+  cash_value: number;
+  financial_value: number;
 }
 
 interface DetailItem {
@@ -46,6 +48,8 @@ interface ChartData {
   totalValue: number;
   totalInvested: number;
   profit: number;
+  financialValue: number;
+  cashValue: number;
 }
 
 const PERIODS = [
@@ -83,13 +87,18 @@ export default function AssetHistoryChart({ userId }: AssetHistoryChartProps) {
     try {
       const res = await fetch(`/api/portfolio-history?userId=${userId}&period=${period}`);
       const snapshots: Snapshot[] = await res.json();
-      const mapped = snapshots.map((s) => ({
-        date: s.date,
-        label: formatDateLabel(s.date, period),
-        totalValue: Number(s.total_value),
-        totalInvested: Number(s.total_invested),
-        profit: Number(s.total_value) - Number(s.total_invested),
-      }));
+      const mapped = snapshots.map((s) => {
+        const totalValue = Number(s.total_value);
+        return {
+          date: s.date,
+          label: formatDateLabel(s.date, period),
+          totalValue,
+          totalInvested: Number(s.total_invested),
+          profit: totalValue - Number(s.total_invested),
+          financialValue: Number(s.financial_value) || 0,
+          cashValue: Number(s.cash_value) || 0,
+        };
+      });
       setData(mapped);
     } catch {
       setData([]);
@@ -222,6 +231,16 @@ export default function AssetHistoryChart({ userId }: AssetHistoryChartProps) {
                         <Typography variant="body2" fontWeight={700}>
                           평가금액: {formatKRW(d.totalValue)}
                         </Typography>
+                        {(d.financialValue > 0 || d.cashValue > 0) && (
+                          <Stack direction="row" spacing={1.5} sx={{ mt: 0.25 }}>
+                            <Typography variant="caption" sx={{ color: '#4caf50' }}>
+                              금융자산: {formatKRW(d.financialValue)}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: '#9e9e9e' }}>
+                              현금: {formatKRW(d.cashValue)}
+                            </Typography>
+                          </Stack>
+                        )}
                         <Typography variant="body2" color="gray6">
                           투자금액: {formatKRW(d.totalInvested)}
                         </Typography>
@@ -244,6 +263,22 @@ export default function AssetHistoryChart({ userId }: AssetHistoryChartProps) {
                   strokeDasharray="4 4"
                   fill="url(#colorInvested)"
                   name="투자금액"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="financialValue"
+                  stroke="#4caf50"
+                  strokeWidth={1.5}
+                  fill="none"
+                  name="금융자산"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="cashValue"
+                  stroke="#9e9e9e"
+                  strokeWidth={1.5}
+                  fill="none"
+                  name="현금"
                 />
                 <Area
                   type="monotone"

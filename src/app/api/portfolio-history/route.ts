@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await supabase
     .from('portfolio_snapshots')
-    .select('date, total_invested, total_value, exchange_rate')
+    .select('date, total_invested, total_value, exchange_rate, financial_value, cash_value')
     .eq('user_id', userId)
     .gte('date', sinceStr)
     .order('date', { ascending: true });
@@ -34,5 +34,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: '스냅샷 조회 실패' }, { status: 500 });
   }
 
-  return NextResponse.json(data ?? []);
+  const FALLBACK_CASH = 14_000_000;
+
+  const enriched = (data ?? []).map((s) => {
+    const totalValue = Number(s.total_value);
+    const financial = Number(s.financial_value) || 0;
+    const cash = Number(s.cash_value) || 0;
+    const hasBreakdown = financial > 0 || cash > 0;
+    return {
+      ...s,
+      financial_value: hasBreakdown ? financial : Math.max(totalValue - FALLBACK_CASH, 0),
+      cash_value: hasBreakdown ? cash : FALLBACK_CASH,
+    };
+  });
+
+  return NextResponse.json(enriched);
 }
