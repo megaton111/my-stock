@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
   // 모든 투자 항목 조회
   const { data: investments, error: invError } = await supabase
     .from('investments')
-    .select('user_id, ticker, avg_price, quantity, currency');
+    .select('user_id, ticker, name, avg_price, quantity, currency');
 
   if (invError || !investments?.length) {
     return NextResponse.json({
@@ -100,10 +100,34 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: '스냅샷 저장 실패', detail: upsertError.message }, { status: 500 });
   }
 
+  // 종목별 스냅샷 저장
+  const itemRows = investments.map((inv) => {
+    const factor = inv.currency === 'USD' ? exchangeRate : 1;
+    const price = priceMap[inv.ticker] ?? inv.avg_price;
+    return {
+      user_id: inv.user_id,
+      date: kstDate,
+      ticker: inv.ticker,
+      name: inv.name,
+      quantity: inv.quantity,
+      price,
+      currency: inv.currency,
+      value_krw: Math.round(price * inv.quantity * factor * 100) / 100,
+      invested_krw: Math.round(inv.avg_price * inv.quantity * factor * 100) / 100,
+    };
+  });
+
+  if (itemRows.length > 0) {
+    await supabase
+      .from('portfolio_snapshot_items')
+      .upsert(itemRows, { onConflict: 'user_id,date,ticker' });
+  }
+
   return NextResponse.json({
     message: '포트폴리오 스냅샷 저장 완료',
     date: kstDate,
     users: rows.length,
+    items: itemRows.length,
     exchangeRate,
   });
 }

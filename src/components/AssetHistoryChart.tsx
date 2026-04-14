@@ -3,9 +3,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Box, Paper, Stack, Typography, ToggleButtonGroup, ToggleButton,
-  CircularProgress,
+  CircularProgress, Collapse, Button, Chip,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import TrendingDownIcon from '@mui/icons-material/TrendingDown';
+import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
   CartesianGrid, Tooltip,
@@ -17,6 +21,23 @@ interface Snapshot {
   total_invested: number;
   total_value: number;
   exchange_rate: number;
+}
+
+interface DetailItem {
+  ticker: string;
+  name: string;
+  currency: string;
+  todayValue: number;
+  prevValue: number;
+  change: number;
+  changeRate: number;
+  isNew: boolean;
+}
+
+interface DetailData {
+  latestDate: string;
+  prevDate: string | null;
+  items: DetailItem[];
 }
 
 interface ChartData {
@@ -53,6 +74,9 @@ export default function AssetHistoryChart({ userId }: AssetHistoryChartProps) {
   const [period, setPeriod] = useState('1m');
   const [data, setData] = useState<ChartData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detail, setDetail] = useState<DetailData | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const fetchHistory = useCallback(async () => {
     setLoading(true);
@@ -80,6 +104,27 @@ export default function AssetHistoryChart({ userId }: AssetHistoryChartProps) {
 
   const handlePeriod = (_: React.MouseEvent<HTMLElement>, next: string | null) => {
     if (next) setPeriod(next);
+  };
+
+  const handleToggleDetail = async () => {
+    if (detailOpen) {
+      setDetailOpen(false);
+      return;
+    }
+    setDetailOpen(true);
+    if (!detail) {
+      setDetailLoading(true);
+      try {
+        const res = await fetch(`/api/portfolio-history/detail?userId=${userId}`);
+        if (res.ok) {
+          setDetail(await res.json());
+        }
+      } catch {
+        // 무시
+      } finally {
+        setDetailLoading(false);
+      }
+    }
   };
 
   const firstValue = data.length > 0 ? data[0].totalValue : 0;
@@ -211,6 +256,105 @@ export default function AssetHistoryChart({ userId }: AssetHistoryChartProps) {
               </AreaChart>
             </ResponsiveContainer>
           </Box>
+        )}
+        {data.length > 0 && (
+          <>
+            <Button
+              size="small"
+              onClick={handleToggleDetail}
+              endIcon={
+                <ExpandMoreIcon
+                  sx={{
+                    transition: 'transform 0.2s',
+                    transform: detailOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                  }}
+                />
+              }
+              sx={{ alignSelf: 'center', color: 'text.secondary', fontSize: '0.8rem' }}
+            >
+              종목별 변동 자세히 보기
+            </Button>
+
+            <Collapse in={detailOpen} unmountOnExit>
+              {detailLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+                  <CircularProgress size={24} />
+                </Box>
+              ) : detail && detail.items.length > 0 ? (
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                    {detail.prevDate
+                      ? `${detail.prevDate} → ${detail.latestDate} 변동`
+                      : `${detail.latestDate} 기준`}
+                  </Typography>
+                  <Stack spacing={0.5}>
+                    {detail.items.map((item) => (
+                      <Stack
+                        key={item.ticker}
+                        direction="row"
+                        alignItems="center"
+                        sx={{
+                          py: 1,
+                          px: 1.5,
+                          borderRadius: 1,
+                          bgcolor: 'action.hover',
+                        }}
+                      >
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography variant="body2" fontWeight={600} noWrap>
+                            {item.name}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {formatKRW(item.todayValue)}
+                          </Typography>
+                        </Box>
+                        <Stack direction="row" alignItems="center" spacing={0.5}>
+                          {item.isNew ? (
+                            <Chip label="신규" size="small" color="info" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
+                          ) : (
+                            <>
+                              {item.change > 0 ? (
+                                <TrendingUpIcon sx={{ fontSize: 16, color: 'error.main' }} />
+                              ) : item.change < 0 ? (
+                                <TrendingDownIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+                              ) : (
+                                <TrendingFlatIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                              )}
+                              <Typography
+                                variant="body2"
+                                fontWeight={600}
+                                sx={{
+                                  color: item.change > 0 ? 'error.main' : item.change < 0 ? 'primary.main' : 'text.secondary',
+                                  minWidth: 80,
+                                  textAlign: 'right',
+                                }}
+                              >
+                                {item.change > 0 ? '+' : ''}{formatKRW(item.change)}
+                              </Typography>
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  color: item.change > 0 ? 'error.main' : item.change < 0 ? 'primary.main' : 'text.secondary',
+                                  minWidth: 50,
+                                  textAlign: 'right',
+                                }}
+                              >
+                                {item.changeRate > 0 ? '+' : ''}{item.changeRate.toFixed(1)}%
+                              </Typography>
+                            </>
+                          )}
+                        </Stack>
+                      </Stack>
+                    ))}
+                  </Stack>
+                </Box>
+              ) : detail ? (
+                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                  비교할 데이터가 아직 없습니다. 내일부터 변동 내역이 표시됩니다.
+                </Typography>
+              ) : null}
+            </Collapse>
+          </>
         )}
       </Stack>
     </Paper>

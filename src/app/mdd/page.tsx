@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   Container, Box, Paper, Stack, Typography, Button,
   ToggleButton, ToggleButtonGroup, Collapse, IconButton,
+  Snackbar, Alert, CircularProgress,
+  Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
@@ -15,8 +17,11 @@ import {
 } from 'recharts';
 import PageHeader from '@/components/PageHeader';
 import WatchlistAddDialog from '@/components/WatchlistAddDialog';
+import { useUser } from '@/hooks/useUser';
 import { calculateMdd, calculateAth, calculateAvgAnnualMdd, calculateDrawdownSeries, MddResult, AthResult, Point, DrawdownPoint } from '@/utils/mdd';
 import { formatRate, profitColor } from '@/utils/format';
+
+const MAX_MDD_ITEMS = 5;
 
 type Range = '1y' | '2y' | '3y' | '5y' | '10y';
 
@@ -29,6 +34,7 @@ const RANGE_LABEL: Record<Range, string> = {
 };
 
 interface MddRow {
+  dbId: string;
   symbol: string;
   name: string;
   currency: string;
@@ -124,9 +130,71 @@ function DataCell({ label, value, color }: { label: string; value: string; color
 }
 
 export default function MddPage() {
+  const { user } = useUser();
   const [rows, setRows] = useState<MddRow[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [expandedSet, setExpandedSet] = useState<Set<string>>(new Set());
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [snack, setSnack] = useState<{ open: boolean; message: string; severity: 'error' | 'success' }>({
+    open: false, message: '', severity: 'error',
+  });
+  const [deleteTarget, setDeleteTarget] = useState<{ symbol: string; name: string } | null>(null);
+
+  // 저장된 종목 불러오기
+  useEffect(() => {
+    if (!user) return;
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/mdd?userId=${user.id}`);
+        if (!res.ok) return;
+        const saved: { id: string; symbol: string; name: string; currency: string }[] = await res.json();
+
+        const loaded: MddRow[] = [];
+        const expanded = new Set<string>();
+
+        await Promise.all(
+          saved.map(async (item) => {
+            try {
+              const [maxData, rangeData] = await Promise.all([
+                fetchHistory(item.symbol, 'max'),
+                fetchHistory(item.symbol, '1y'),
+              ]);
+              const rangeHistory = rangeData.history as Point[];
+              const ath = calculateAth(maxData.history as Point[]);
+              const result = calculateMdd(rangeHistory);
+              const drawdownSeries = calculateDrawdownSeries(rangeHistory);
+              const avgMdd = calculateAvgAnnualMdd(rangeHistory);
+
+              if (!ath || !result) return;
+
+              const athDrawdown = (result.latest - ath.allTimeHigh) / ath.allTimeHigh;
+              loaded.push({
+                dbId: item.id,
+                symbol: item.symbol,
+                name: item.name,
+                currency: item.currency,
+                range: '1y',
+                result,
+                drawdownSeries,
+                ath,
+                athDrawdown,
+                avgMdd,
+              });
+              expanded.add(item.symbol);
+            } catch {
+              // 개별 종목 실패 시 무시
+            }
+          }),
+        );
+
+        setRows(loaded);
+        setExpandedSet(expanded);
+      } finally {
+        setInitialLoading(false);
+      }
+    })();
+  }, [user]);
 
   const toggleExpand = (symbol: string) => {
     setExpandedSet((prev) => {
@@ -137,9 +205,13 @@ export default function MddPage() {
     });
   };
 
-  const handleAdd = useCallback(async (ticker: string) => {
+  const handleAdd = useCallback(async (ticker: string, stockName: string) => {
     const symbol = ticker.trim().toUpperCase();
     if (!symbol) return;
+
+    if (rows.length >= MAX_MDD_ITEMS) {
+      throw new Error(`최대 ${MAX_MDD_ITEMS}개까지 등록이 가능합니다.`);
+    }
 
     if (rows.some((r) => r.symbol === symbol)) {
       throw new Error('이미 추가된 종목입니다.');
@@ -160,13 +232,32 @@ export default function MddPage() {
 
     const athDrawdown = (result.latest - ath.allTimeHigh) / ath.allTimeHigh;
     const resolvedSymbol = maxData.symbol as string;
+    const displayName = stockName || maxData.name;
+    const currency = maxData.currency as string;
+
+    // DB에 저장
+    let dbId = '';
+    if (user) {
+      const saveRes = await fetch('/api/mdd', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, symbol: resolvedSymbol, name: displayName, currency }),
+      });
+      if (!saveRes.ok) {
+        const err = await saveRes.json().catch(() => ({}));
+        throw new Error(err.error || '저장 실패');
+      }
+      const saved = await saveRes.json();
+      dbId = saved.id;
+    }
 
     setRows((prev) => [
       ...prev,
       {
+        dbId,
         symbol: resolvedSymbol,
-        name: maxData.name,
-        currency: maxData.currency,
+        name: displayName,
+        currency,
         range: '1y',
         result,
         drawdownSeries,
@@ -176,7 +267,7 @@ export default function MddPage() {
       },
     ]);
     setExpandedSet((prev) => new Set(prev).add(resolvedSymbol));
-  }, [rows]);
+  }, [rows, user]);
 
   const handleRangeChange = useCallback(async (symbol: string, newRange: Range) => {
     setRows((prev) => prev.map((r) => r.symbol === symbol ? { ...r, loading: true } : r));
@@ -202,30 +293,54 @@ export default function MddPage() {
     }
   }, []);
 
-  const handleRemove = (symbol: string) => {
+  const handleRemoveConfirm = async () => {
+    if (!deleteTarget) return;
+    const { symbol } = deleteTarget;
+    const row = rows.find((r) => r.symbol === symbol);
+
+    // DB에서 삭제
+    if (row?.dbId && user) {
+      const res = await fetch(`/api/mdd?id=${row.dbId}&userId=${user.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        setSnack({ open: true, message: '삭제 실패', severity: 'error' });
+        setDeleteTarget(null);
+        return;
+      }
+    }
+
     setRows((prev) => prev.filter((r) => r.symbol !== symbol));
     setExpandedSet((prev) => {
       const next = new Set(prev);
       next.delete(symbol);
       return next;
     });
+    setDeleteTarget(null);
   };
 
   return (
-    <Container maxWidth="md" sx={{ py: { xs: 2, sm: 4 } }}>
+    <Container maxWidth="md" sx={{ py: 10, position: 'relative' }}>
       <PageHeader />
       <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
         MDD 분석
       </Typography>
 
-      <Box sx={{ mb: 2 }}>
+      <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
-          onClick={() => setDialogOpen(true)}
+          onClick={() => {
+            if (rows.length >= MAX_MDD_ITEMS) {
+              setSnack({ open: true, message: `최대 ${MAX_MDD_ITEMS}개까지 등록이 가능합니다.`, severity: 'error' });
+              return;
+            }
+            setDialogOpen(true);
+          }}
         >
           종목 추가
         </Button>
+        <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+          {rows.length}/{MAX_MDD_ITEMS}
+        </Typography>
       </Box>
 
       <WatchlistAddDialog
@@ -280,7 +395,7 @@ export default function MddPage() {
                   </Box>
                   <IconButton
                     size="small"
-                    onClick={(e) => { e.stopPropagation(); handleRemove(row.symbol); }}
+                    onClick={(e) => { e.stopPropagation(); setDeleteTarget({ symbol: row.symbol, name: row.name }); }}
                   >
                     <DeleteIcon fontSize="small" />
                   </IconButton>
@@ -349,13 +464,43 @@ export default function MddPage() {
         })}
       </Stack>
 
-      {rows.length === 0 && (
+      {rows.length === 0 && !initialLoading && (
         <Paper sx={{ p: 6, borderRadius: 2, textAlign: 'center' }}>
           <Typography variant="body2" color="text.secondary">
             종목을 추가하여 MDD를 분석해보세요.
           </Typography>
         </Paper>
       )}
+
+      {initialLoading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+          <CircularProgress size={32} />
+        </Box>
+      )}
+
+      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)}>
+        <DialogTitle>종목 삭제</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            <strong>{deleteTarget?.name}</strong> 종목을 삭제하시겠습니까?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteTarget(null)}>취소</Button>
+          <Button color="error" onClick={handleRemoveConfirm}>삭제</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={snack.open}
+        autoHideDuration={3000}
+        onClose={() => setSnack((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity={snack.severity} variant="filled" onClose={() => setSnack((s) => ({ ...s, open: false }))}>
+          {snack.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 }
