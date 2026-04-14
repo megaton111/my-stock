@@ -209,7 +209,7 @@ export default function InvestmentsPage() {
             variant="contained"
             onClick={openAdd}
           >
-            투자 등록
+            등록
           </Button>
         </Box>
 

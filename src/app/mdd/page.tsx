@@ -161,7 +161,11 @@ export default function MddPage() {
                 fetchHistory(item.symbol, '1y'),
               ]);
               const rangeHistory = rangeData.history as Point[];
-              const ath = calculateAth(maxData.history as Point[]);
+              const athMax = calculateAth(maxData.history as Point[]);
+              const athRange = calculateAth(rangeHistory);
+              const ath = (athMax && athRange)
+                ? (athRange.allTimeHigh > athMax.allTimeHigh ? athRange : athMax)
+                : athMax ?? athRange;
               const result = calculateMdd(rangeHistory);
               const drawdownSeries = calculateDrawdownSeries(rangeHistory);
               const avgMdd = calculateAvgAnnualMdd(rangeHistory);
@@ -223,7 +227,11 @@ export default function MddPage() {
     ]);
 
     const rangeHistory = rangeData.history as Point[];
-    const ath = calculateAth(maxData.history as Point[]);
+    const athMax = calculateAth(maxData.history as Point[]);
+    const athRange = calculateAth(rangeHistory);
+    const ath = (athMax && athRange)
+      ? (athRange.allTimeHigh > athMax.allTimeHigh ? athRange : athMax)
+      : athMax ?? athRange;
     const result = calculateMdd(rangeHistory);
     const drawdownSeries = calculateDrawdownSeries(rangeHistory);
     const avgMdd = calculateAvgAnnualMdd(rangeHistory);
@@ -284,8 +292,10 @@ export default function MddPage() {
       setRows((prev) =>
         prev.map((r) => {
           if (r.symbol !== symbol) return r;
-          const athDrawdown = (result.latest - r.ath.allTimeHigh) / r.ath.allTimeHigh;
-          return { ...r, range: newRange, result, drawdownSeries, athDrawdown, avgMdd, loading: false };
+          const rangeAth = calculateAth(history);
+          const bestAth = rangeAth && rangeAth.allTimeHigh > r.ath.allTimeHigh ? rangeAth : r.ath;
+          const athDrawdown = (result.latest - bestAth.allTimeHigh) / bestAth.allTimeHigh;
+          return { ...r, range: newRange, result, drawdownSeries, ath: bestAth, athDrawdown, avgMdd, loading: false };
         }),
       );
     } catch {
@@ -336,7 +346,7 @@ export default function MddPage() {
             setDialogOpen(true);
           }}
         >
-          종목 추가
+          등록
         </Button>
         <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
           {rows.length}/{MAX_MDD_ITEMS}
@@ -421,7 +431,10 @@ export default function MddPage() {
                       gap: 1.5,
                     }}
                   >
-                    <DataCell label="최고가" value={formatPrice(row.ath.allTimeHigh, row.currency)} />
+                    <DataCell
+                      label={`최고가 (${formatShortDate(row.ath.athDate)})`}
+                      value={formatPrice(row.ath.allTimeHigh, row.currency)}
+                    />
                     <DataCell label="현재가" value={formatPrice(r.latest, row.currency)} />
                     <DataCell
                       label="고점대비"
@@ -433,6 +446,18 @@ export default function MddPage() {
                       value={formatRate(r.mdd * 100)}
                       color="var(--mui-palette-primary-main)"
                     />
+                    <DataCell
+                      label={`MDD 적용가 (${RANGE_LABEL[row.range]})`}
+                      value={formatPrice(row.ath.allTimeHigh * (1 + r.mdd), row.currency)}
+                      color="var(--mui-palette-primary-main)"
+                    />
+                    {row.avgMdd !== null && (
+                      <DataCell
+                        label={`평균 MDD (${RANGE_LABEL[row.range]})`}
+                        value={`${formatRate(row.avgMdd * 100)} (${formatPrice(row.ath.allTimeHigh * (1 + row.avgMdd), row.currency)})`}
+                        color="var(--mui-palette-primary-main)"
+                      />
+                    )}
                     <DataCell label="연초가" value={formatPrice(r.ytdStart, row.currency)} />
                     <DataCell
                       label="연초대비"
@@ -447,13 +472,6 @@ export default function MddPage() {
                       label="저점일"
                       value={`${formatShortDate(r.troughDate)} (${formatPrice(r.troughPrice, row.currency)})`}
                     />
-                    {row.avgMdd !== null && (
-                      <DataCell
-                        label={`평균 MDD (${RANGE_LABEL[row.range]})`}
-                        value={formatRate(row.avgMdd * 100)}
-                        color="var(--mui-palette-primary-main)"
-                      />
-                    )}
                   </Box>
 
                   <MddChart data={row.drawdownSeries} mdd={r.mdd} />

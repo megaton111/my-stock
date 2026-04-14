@@ -65,9 +65,9 @@ export default function CollectPage() {
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2} width={1}>
           <Box>
             <Typography variant="h5" fontWeight={700}>주식 모으기</Typography>
-            <Typography variant="body2" color="gray5" sx={{ mt: 0.5 }}>
+            {/* <Typography variant="body2" color="gray5" sx={{ mt: 0.5 }}>
               카드를 클릭하여 매수 일지를 작성하세요
-            </Typography>
+            </Typography> */}
           </Box>
           <Button
             variant="contained"
@@ -75,7 +75,7 @@ export default function CollectPage() {
             onClick={() => router.push('/collect/detail')}
             sx={{ flexShrink: 0 }}
           >
-            신규 등록
+            등록
           </Button>
         </Stack>
 
@@ -83,6 +83,19 @@ export default function CollectPage() {
           <Box sx={{ py: 8 }}>
             <CircularProgress size={32} />
           </Box>
+        ) : stocks.length === 0 ? (
+          <Stack alignItems="center" spacing={2} sx={{ py: 10 }}>
+            <Typography variant="body1" color="text.secondary">
+              주식 모으기를 시작하세요!
+            </Typography>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => router.push('/collect/detail')}
+            >
+              신규 등록
+            </Button>
+          </Stack>
         ) : (
           <Box
             sx={{
