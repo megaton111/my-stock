@@ -22,7 +22,7 @@ interface BucketRow {
 }
 
 export default function AssetAllocationWidget({ investments, prices, exchangeRate }: AssetAllocationWidgetProps) {
-  const { rows, total } = useMemo(() => {
+  const { rows, total, financialValue, cashValue, financialPercent, cashPercent } = useMemo(() => {
     const totals: Record<AssetClass, number> = {
       한국주식: 0, 미국주식: 0, 코인: 0, 현금: 0,
     };
@@ -41,9 +41,15 @@ export default function AssetAllocationWidget({ investments, prices, exchangeRat
         color: ASSET_CLASS_COLORS[name],
         percent: sum > 0 ? (totals[name] / sum) * 100 : 0,
       }))
-      .filter((row) => row.value > 0);
+      .filter((row) => row.value > 0)
+      .sort((a, b) => b.percent - a.percent);
 
-    return { rows: list, total: sum };
+    const financialValue = sum - totals['현금'];
+    const cashValue = totals['현금'];
+    const financialPercent = sum > 0 ? (financialValue / sum) * 100 : 0;
+    const cashPercent = sum > 0 ? (cashValue / sum) * 100 : 0;
+
+    return { rows: list, total: sum, financialValue, cashValue, financialPercent, cashPercent };
   }, [investments, prices, exchangeRate]);
 
   if (rows.length === 0) return null;
@@ -103,6 +109,48 @@ export default function AssetAllocationWidget({ investments, prices, exchangeRat
           ))}
         </Stack>
       </Stack>
+
+      {/* 금융자산 / 현금 비중 바 */}
+      {total > 0 && (
+        <Box sx={{ mt: 2 }}>
+          <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
+            <Stack direction="row" alignItems="center" spacing={0.5}>
+              <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#1976d2' }} />
+              <Typography sx={{ fontSize: '0.7rem', color: 'gray7' }}>
+                금융자산 {financialPercent.toFixed(1)}%
+              </Typography>
+              <Typography sx={{ fontSize: '0.65rem', color: 'gray5' }}>
+                ({formatKRW(financialValue)})
+              </Typography>
+            </Stack>
+            <Stack direction="row" alignItems="center" spacing={0.5}>
+              <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#9e9e9e' }} />
+              <Typography sx={{ fontSize: '0.7rem', color: 'gray7' }}>
+                현금 {cashPercent.toFixed(1)}%
+              </Typography>
+              <Typography sx={{ fontSize: '0.65rem', color: 'gray5' }}>
+                ({formatKRW(cashValue)})
+              </Typography>
+            </Stack>
+          </Stack>
+          <Box sx={{
+            width: '100%',
+            height: 8,
+            borderRadius: 4,
+            overflow: 'hidden',
+            display: 'flex',
+            bgcolor: '#9e9e9e',
+          }}>
+            <Box sx={{
+              width: `${financialPercent}%`,
+              height: '100%',
+              bgcolor: '#1976d2',
+              borderRadius: financialPercent >= 100 ? 4 : '4px 0 0 4px',
+              transition: 'width 0.3s ease',
+            }} />
+          </Box>
+        </Box>
+      )}
     </Paper>
   );
 }
