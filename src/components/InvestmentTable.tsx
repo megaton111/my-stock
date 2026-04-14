@@ -14,6 +14,34 @@ interface InvestmentTableProps {
   exchangeRate: number;
 }
 
+async function openStockPage(ticker: string) {
+  // 국내주식
+  if (ticker.endsWith('.KS') || ticker.endsWith('.KQ')) {
+    const code = ticker.replace(/\.(KS|KQ)$/, '');
+    window.open(`https://stock.naver.com/domestic/stock/${code}/price`, '_blank');
+    return;
+  }
+  // 코인
+  if (ticker.endsWith('-USD')) {
+    const symbol = ticker.replace(/-USD$/, '');
+    window.open(`https://stock.naver.com/crypto/UPBIT/${symbol}`, '_blank');
+    return;
+  }
+  // 해외주식: 네이버 코드 조회 후 이동
+  try {
+    const res = await fetch(`/api/stock/naver-code?ticker=${encodeURIComponent(ticker)}`);
+    if (res.ok) {
+      const data = await res.json();
+      const pathType = data.stockEndType === 'etf' ? 'etf' : 'stock';
+      window.open(`https://stock.naver.com/worldstock/${pathType}/${data.reutersCode}/price`, '_blank');
+      return;
+    }
+  } catch {
+    // 실패 시 Yahoo Finance 폴백
+  }
+  window.open(`https://finance.yahoo.com/quote/${ticker}`, '_blank');
+}
+
 type SortKey = 'name' | 'invested' | 'quantity' | 'avgPrice' | 'price' | 'rate' | 'profit' | 'current';
 type SortDir = 'asc' | 'desc';
 
@@ -143,7 +171,18 @@ export default function InvestmentTable({ investments, prices, exchangeRate }: I
               return (
               <TableRow key={item.ticker} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                 <TableCell>
-                  <Typography fontWeight={600} fontSize="0.8rem" lineHeight={1.25}>{item.name}</Typography>
+                  <Typography
+                    fontWeight={600}
+                    fontSize="0.8rem"
+                    lineHeight={1.25}
+                    onClick={cash ? undefined : () => openStockPage(item.ticker)}
+                    sx={cash ? {} : {
+                      cursor: 'pointer',
+                      '&:hover': { color: 'primary.main', textDecoration: 'underline' },
+                    }}
+                  >
+                    {item.name}
+                  </Typography>
                   <Typography color="gray6" fontSize="0.65rem" lineHeight={1.2}>{cash ? '현금' : item.ticker}</Typography>
                 </TableCell>
                 <TableCell align="right">{formatKRW(invested)}</TableCell>
@@ -182,7 +221,17 @@ export default function InvestmentTable({ investments, prices, exchangeRate }: I
             >
               <Stack spacing={.5}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
-                  <Typography fontWeight={700} fontSize={16}>{item.name}</Typography>
+                  <Typography
+                    fontWeight={700}
+                    fontSize={16}
+                    onClick={cash ? undefined : (e) => { e.stopPropagation(); openStockPage(item.ticker); }}
+                    sx={cash ? {} : {
+                      cursor: 'pointer',
+                      '&:hover': { color: 'primary.main', textDecoration: 'underline' },
+                    }}
+                  >
+                    {item.name}
+                  </Typography>
                   <IconButton
                     size="small"
                     onClick={() => toggleCard(item.ticker)}
