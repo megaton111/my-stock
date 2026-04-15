@@ -23,6 +23,7 @@ interface Snapshot {
   exchange_rate: number;
   cash_value: number;
   financial_value: number;
+  profit_rate: number | null;
 }
 
 interface DetailItem {
@@ -48,6 +49,7 @@ interface ChartData {
   totalValue: number;
   totalInvested: number;
   profit: number;
+  profitRate: number | null;
   financialValue: number;
   cashValue: number;
 }
@@ -95,6 +97,7 @@ export default function AssetHistoryChart({ userId }: AssetHistoryChartProps) {
           totalValue,
           totalInvested: Number(s.total_invested),
           profit: totalValue - Number(s.total_invested),
+          profitRate: s.profit_rate != null ? Number(s.profit_rate) : null,
           financialValue: Number(s.financial_value) || 0,
           cashValue: Number(s.cash_value) || 0,
         };
@@ -250,6 +253,15 @@ export default function AssetHistoryChart({ userId }: AssetHistoryChartProps) {
                           sx={{ color: d.profit >= 0 ? 'error.main' : 'primary.main' }}
                         >
                           수익: {d.profit >= 0 ? '+' : ''}{formatKRW(d.profit)}
+                          {d.profitRate != null && (
+                            <Typography
+                              component="span"
+                              variant="caption"
+                              sx={{ ml: 0.5, color: 'inherit' }}
+                            >
+                              ({d.profitRate >= 0 ? '+' : ''}{d.profitRate.toFixed(2)}%)
+                            </Typography>
+                          )}
                         </Typography>
                       </Paper>
                     );

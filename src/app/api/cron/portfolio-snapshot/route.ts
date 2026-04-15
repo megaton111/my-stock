@@ -103,6 +103,9 @@ export async function GET(request: NextRequest) {
     financial_value: Math.round(s.financialValue * 100) / 100,
     cash_value: Math.round(s.cashValue * 100) / 100,
     exchange_rate: Math.round(exchangeRate * 100) / 100,
+    profit_rate: s.totalInvested > 0
+      ? Math.round((s.totalValue - s.totalInvested) / s.totalInvested * 10000) / 100
+      : 0,
   }));
 
   const { error: upsertError } = await supabase

@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await supabase
     .from('portfolio_snapshots')
-    .select('date, total_invested, total_value, exchange_rate, financial_value, cash_value')
+    .select('date, total_invested, total_value, exchange_rate, financial_value, cash_value, profit_rate')
     .eq('user_id', userId)
     .gte('date', sinceStr)
     .order('date', { ascending: true });
