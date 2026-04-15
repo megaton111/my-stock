@@ -51,7 +51,9 @@ export function useStockPrices(investments: Investment[]): StockPricesState {
     };
 
     fetchPrices();
-    const interval = setInterval(fetchPrices, POLL_INTERVAL);
+    const interval = setInterval(() => {
+      if (!document.hidden) fetchPrices();
+    }, POLL_INTERVAL);
     return () => clearInterval(interval);
   }, [investments]);
 

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Box, Paper, Stack, Typography, LinearProgress, CircularProgress, Button,
+  Box, Paper, Stack, Typography, LinearProgress, Skeleton, Button,
 } from '@mui/material';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
@@ -81,9 +81,13 @@ export default function ProgressWidget() {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4, width: 1 }}>
-        <CircularProgress size={24} />
-      </Box>
+      <Skeleton
+        variant="rectangular"
+        animation="wave"
+        width="100%"
+        height={180}
+        sx={{ borderRadius: 1 }}
+      />
     );
   }
 

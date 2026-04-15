@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Box, Paper, Stack, Typography, CircularProgress,
+  Box, Paper, Stack, Typography, Skeleton, CircularProgress,
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
   Select, MenuItem, Divider, Chip,
 } from '@mui/material';
@@ -67,9 +67,11 @@ export default function RealizedPlWidget({ userId, sx }: RealizedPlWidgetProps) 
 
   if (loading) {
     return (
-      <Paper sx={[{ width: 1, p: { xs: 1.5, sm: 2 }, borderRadius: 2, display: 'flex', justifyContent: 'center', alignItems: 'center' }, ...(Array.isArray(sx) ? sx : [sx])]}>
-        <CircularProgress size={20} />
-      </Paper>
+      <Skeleton
+        variant="rectangular"
+        animation="wave"
+        sx={[{ width: 1, height: 120, borderRadius: 1 }, ...(Array.isArray(sx) ? sx : [sx])]}
+      />
     );
   }
 

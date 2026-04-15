@@ -13,6 +13,7 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { formatRate, profitColor } from '@/utils/format';
+import { openStockPage } from '@/utils/stockLink';
 import WatchlistAddDialog from './WatchlistAddDialog';
 
 interface WatchlistWidgetProps {
@@ -25,30 +26,10 @@ function formatPrice(price: number, currency?: string) {
   return price.toLocaleString(undefined, { maximumFractionDigits: 4 });
 }
 
-// 한국 주식(.KS/.KQ)은 종목명, 그 외(미국/코인)는 티커를 타이틀로 사용
 function getCardTitle(ticker: string, stockName: string): string {
   const isKorean = ticker.endsWith('.KS') || ticker.endsWith('.KQ');
   return isKorean ? stockName : ticker.replace(/-USD$/, '');
 }
-
-const openNaverFinance = (ticker: string, stockType?: string, naverCode?: string) => {
-  // 국내주식
-  if (ticker.endsWith('.KS') || ticker.endsWith('.KQ')) {
-    const code = ticker.replace(/\.(KS|KQ)$/, '');
-    window.open(`https://stock.naver.com/domestic/stock/${code}/price`, '_blank');
-    return;
-  }
-  // 코인
-  if (ticker.endsWith('-USD')) {
-    const symbol = ticker.replace(/-USD$/, '');
-    window.open(`https://stock.naver.com/crypto/UPBIT/${symbol}`, '_blank');
-    return;
-  }
-  // 해외주식 (네이버 코드 없으면 스킵)
-  if (!naverCode) return;
-  const pathType = stockType === 'etf' ? 'etf' : 'stock';
-  window.open(`https://stock.naver.com/worldstock/${pathType}/${naverCode}/price`, '_blank');
-};
 
 export default function WatchlistWidget({ userId }: WatchlistWidgetProps) {
   const { items, quotes, loading, add, remove } = useWatchlist(userId);
@@ -63,7 +44,7 @@ export default function WatchlistWidget({ userId }: WatchlistWidgetProps) {
         </Typography>
         <Button
           size="small"
-          variant="outlined"
+          variant="text"
           onClick={() => setDialogOpen(true)}
         >
           등록
@@ -118,7 +99,7 @@ export default function WatchlistWidget({ userId }: WatchlistWidgetProps) {
                   },
                 }}
               >
-                <Stack spacing={0.25} onClick={() => openNaverFinance(item.ticker, item.stockType, item.naverCode)} sx={{ cursor: 'pointer' }}>
+                <Stack spacing={0.25} onClick={() => openStockPage(item.ticker, item.stockType, item.naverCode)} sx={{ cursor: 'pointer' }}>
                   <Typography variant="body2" fontWeight={700} noWrap>
                     {title}
                   </Typography>

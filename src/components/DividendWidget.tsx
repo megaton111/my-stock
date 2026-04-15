@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import {
-  Box, Paper, Stack, Typography, CircularProgress, Divider,
+  Box, Paper, Stack, Typography, Skeleton, Divider,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import PaidIcon from '@mui/icons-material/Paid';
@@ -124,9 +124,13 @@ export default function DividendWidget({ investments, exchangeRate }: DividendWi
 
   if (loading) {
     return (
-      <Paper sx={{ p: 3, width: 1, borderRadius: 2, display: 'flex', justifyContent: 'center' }}>
-        <CircularProgress size={24} />
-      </Paper>
+      <Skeleton
+        variant="rectangular"
+        animation="wave"
+        width="100%"
+        height={240}
+        sx={{ borderRadius: 1 }}
+      />
     );
   }
 
