@@ -150,11 +150,10 @@ export default function MddPage() {
         if (!res.ok) return;
         const saved: { id: string; symbol: string; name: string; currency: string }[] = await res.json();
 
-        const loaded: MddRow[] = [];
         const expanded = new Set<string>();
 
-        await Promise.all(
-          saved.map(async (item) => {
+        const results = await Promise.all(
+          saved.map(async (item): Promise<MddRow | null> => {
             try {
               const [maxData, rangeData] = await Promise.all([
                 fetchHistory(item.symbol, 'max'),
@@ -170,10 +169,11 @@ export default function MddPage() {
               const drawdownSeries = calculateDrawdownSeries(rangeHistory);
               const avgMdd = calculateAvgAnnualMdd(rangeHistory);
 
-              if (!ath || !result) return;
+              if (!ath || !result) return null;
 
               const athDrawdown = (result.latest - ath.allTimeHigh) / ath.allTimeHigh;
-              loaded.push({
+              expanded.add(item.symbol);
+              return {
                 dbId: item.id,
                 symbol: item.symbol,
                 name: item.name,
@@ -184,14 +184,14 @@ export default function MddPage() {
                 ath,
                 athDrawdown,
                 avgMdd,
-              });
-              expanded.add(item.symbol);
+              };
             } catch {
-              // 개별 종목 실패 시 무시
+              return null;
             }
           }),
         );
 
+        const loaded = results.filter((r): r is MddRow => r !== null);
         setRows(loaded);
         setExpandedSet(expanded);
       } finally {
