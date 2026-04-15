@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import supabase from '@/lib/supabase';
 
-// 공공데이터포털 금융위원회_주식시세정보 API
-// 보통주+우선주+ETF/ETN/리츠까지 거래종목 전체를 ticker 단위로 제공
-const BASE_URL =
+// 공공데이터포털 금융위원회 API
+const STOCK_URL =
   'https://apis.data.go.kr/1160100/service/GetStockSecuritiesInfoService/getStockPriceInfo';
+const ETF_URL =
+  'https://apis.data.go.kr/1160100/service/GetETFSecuritiesInfoService/getETFPriceInfo';
 
 // Vercel 함수 타임아웃 연장 (기본 10초 → 60초)
 export const maxDuration = 60;
@@ -48,7 +49,7 @@ function getRecentBusinessDays(count: number): string[] {
   return result;
 }
 
-async function fetchByBasDt(serviceKey: string, basDt: string): Promise<KrxItem[]> {
+async function fetchByBasDt(serviceKey: string, basDt: string, baseUrl: string = STOCK_URL): Promise<KrxItem[]> {
   const params = new URLSearchParams({
     serviceKey,
     resultType: 'json',
@@ -56,7 +57,7 @@ async function fetchByBasDt(serviceKey: string, basDt: string): Promise<KrxItem[
     pageNo: '1',
     basDt,
   });
-  const res = await fetch(`${BASE_URL}?${params}`, { cache: 'no-store' });
+  const res = await fetch(`${baseUrl}?${params}`, { cache: 'no-store' });
   if (!res.ok) {
     const bodyText = await res.text().catch(() => '');
     throw new Error(`API ${res.status}: ${bodyText.slice(0, 200)}`);
@@ -88,17 +89,22 @@ export async function GET(request: NextRequest) {
   try {
     // 최근 영업일 7개를 순서대로 시도해서 데이터가 있는 가장 최신일 사용
     const candidates = getRecentBusinessDays(7);
-    let items: KrxItem[] = [];
+    let stockItems: KrxItem[] = [];
+    let etfItems: KrxItem[] = [];
     let usedBasDt = '';
 
     for (const basDt of candidates) {
-      const result = await fetchByBasDt(serviceKey, basDt);
+      const result = await fetchByBasDt(serviceKey, basDt, STOCK_URL);
       if (result.length > 0) {
-        items = result;
+        stockItems = result;
         usedBasDt = basDt;
+        // 같은 날짜로 ETF도 조회
+        etfItems = await fetchByBasDt(serviceKey, basDt, ETF_URL);
         break;
       }
     }
+
+    const items = [...stockItems, ...etfItems];
 
     if (items.length === 0) {
       return NextResponse.json(
@@ -135,7 +141,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       message: 'KRX 종목 마스터 동기화 완료',
       basDt: usedBasDt,
-      fetched: items.length,
+      stocks: stockItems.length,
+      etfs: etfItems.length,
       upserted,
     });
   } catch (error: unknown) {
