@@ -157,7 +157,6 @@ function Section({ title, onMore, children }: { title: string; onMore: () => voi
           <Typography variant="body2" color="gray6" fontWeight={600}>{title}</Typography>
           <Button
             size="small"
-            endIcon={<ArrowForwardIcon sx={{ fontSize: 14 }} />}
             onClick={onMore}
             sx={{ fontSize: '0.75rem', color: 'gray6' }}
           >

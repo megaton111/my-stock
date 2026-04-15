@@ -9,6 +9,7 @@ import {
   Button,
   IconButton,
   CircularProgress,
+  useTheme
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { useWatchlist } from '@/hooks/useWatchlist';
@@ -19,6 +20,8 @@ import WatchlistAddDialog from './WatchlistAddDialog';
 interface WatchlistWidgetProps {
   userId: string;
 }
+
+
 
 function formatPrice(price: number, currency?: string) {
   if (currency === 'KRW') return `${Math.floor(price).toLocaleString()}원`;
@@ -35,6 +38,7 @@ export default function WatchlistWidget({ userId }: WatchlistWidgetProps) {
   const { items, quotes, loading, add, remove } = useWatchlist(userId);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [hoverId, setHoverId] = useState<string | null>(null);
+  const theme = useTheme();
 
   return (
     <Paper sx={{ p: { xs: 1.5, sm: 3 }, borderRadius: 2, width: 1 }}>
@@ -100,15 +104,16 @@ export default function WatchlistWidget({ userId }: WatchlistWidgetProps) {
                 }}
               >
                 <Stack spacing={0.25} onClick={() => openStockPage(item.ticker, item.stockType, item.naverCode)} sx={{ cursor: 'pointer' }}>
-                  <Typography variant="body2" fontWeight={700} noWrap>
+                  <Typography variant="body2" fontWeight={700} noWrap fontSize={theme.typography.pxToRem(12)}>
                     {title}
                   </Typography>
-                  <Typography variant="body2" fontWeight={600} noWrap>
+                  <Typography variant="body2" fontWeight={600} noWrap fontSize={theme.typography.pxToRem(12)}>
                     {quote?.price != null ? formatPrice(quote.price, quote.currency) : '-'}
                   </Typography>
                   <Typography
                     variant="caption"
                     sx={{ color: change != null ? profitColor(change) : 'text.disabled' }}
+                    fontSize={theme.typography.pxToRem(11)}
                   >
                     {change != null ? formatRate(change) : '-'}
                   </Typography>

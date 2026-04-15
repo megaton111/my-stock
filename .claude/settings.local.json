@@ -5,7 +5,11 @@
       "Bash(curl -s \"https://api.stock.naver.com/stock/QLD/basic\" -H \"User-Agent: Mozilla/5.0\" -H \"Accept: application/json\")",
       "Bash(curl -s \"https://stock.naver.com/crypto/UPBIT/BTC\" -H \"User-Agent: Mozilla/5.0\")",
       "Bash(grep -oP '\"code\":\"[A-Z]{2,10}\"')",
-      "Bash(pnpm lint:*)"
+      "Bash(pnpm lint:*)",
+      "Bash(curl -s \"https://ac.stock.naver.com/ac?q=kodex&target=stock\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(i['code'], i['name']\\) for i in d.get\\('items',[]\\)]\")",
+      "Bash(node -e \"const d=JSON.parse\\(require\\('fs'\\).readFileSync\\(0,'utf8'\\)\\);d.items?.forEach\\(i=>console.log\\(i.code,i.name\\)\\)\")",
+      "Bash(curl:*)"
     ]
   },
   "outputStyle": "Explanatory"
