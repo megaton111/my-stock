@@ -48,12 +48,47 @@ async function searchKR(q: string): Promise<SearchItem[]> {
 
   if (error) throw new Error(error.message);
 
-  return (data ?? []).map((row) => ({
+  const dbResults = (data ?? []).map((row) => ({
     symbol: `${row.ticker}${toYahooKrSuffix(row.market)}`,
     name: row.name,
     exchange: row.market,
     type: '주식',
   }));
+
+  // DB에 결과가 없으면 네이버 증권 자동완성으로 폴백 (ETF 등 누락 종목 대응)
+  if (dbResults.length === 0) {
+    return searchNaverKR(q);
+  }
+  return dbResults;
+}
+
+interface NaverAcItem {
+  code?: string;
+  name?: string;
+  typeCode?: string;
+  reutersCode?: string;
+}
+
+async function searchNaverKR(q: string): Promise<SearchItem[]> {
+  const url = `https://ac.stock.naver.com/ac?q=${encodeURIComponent(q)}&target=stock`;
+  const res = await fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' },
+  });
+  if (!res.ok) return [];
+  const data = (await res.json()) as { items?: NaverAcItem[] };
+
+  return (data.items ?? [])
+    .filter((item) => item.code && item.name)
+    .slice(0, 10)
+    .map((item) => {
+      const suffix = item.typeCode === 'KOSDAQ' ? '.KQ' : '.KS';
+      return {
+        symbol: `${item.code}${suffix}`,
+        name: item.name!,
+        exchange: item.typeCode || 'KOSPI',
+        type: 'ETF',
+      };
+    });
 }
 
 async function searchYahoo(q: string, typeFilter?: 'CRYPTO'): Promise<SearchItem[]> {
