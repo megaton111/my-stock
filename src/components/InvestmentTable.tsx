@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Box, Paper, Stack, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, IconButton, Collapse } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { Investment } from '@/types/investment';
+import { Investment, SourceBreakdown } from '@/types/investment';
 import { investedAmount, currentValue } from '@/utils/calculator';
 import { formatCurrency, formatKRW, formatRate, formatProfit, profitColor } from '@/utils/format';
 import { isCash } from '@/utils/assetClass';
@@ -38,6 +38,19 @@ interface RowData {
   rate: number;
   avgPriceKRW: number;  // 매입가를 원화로 환산한 값 (정렬용)
   priceKRW: number;     // 현재가를 원화로 환산한 값 (정렬용)
+}
+
+const SOURCE_LABELS: Record<string, string> = {
+  investments: '투자내역',
+  collect: '모으기',
+  dca: '적립식',
+};
+
+function formatSources(sources?: SourceBreakdown): string | null {
+  if (!sources) return null;
+  const entries = Object.entries(sources).filter(([, qty]) => qty && qty > 0);
+  if (entries.length <= 1) return null;
+  return entries.map(([key, qty]) => `${SOURCE_LABELS[key] || key} ${qty}주`).join(' · ');
 }
 
 function getRowValue(row: RowData, key: SortKey): number | string {
@@ -155,6 +168,14 @@ export default function InvestmentTable({ investments, prices, exchangeRate }: I
                     {item.name}
                   </Typography>
                   <Typography color="gray6" fontSize="0.65rem" lineHeight={1.2}>{cash ? '현금' : item.ticker}</Typography>
+                  {(() => {
+                    const sourceText = formatSources(item.sources);
+                    return sourceText ? (
+                      <Typography color="gray5" fontSize="0.6rem" lineHeight={1.2}>
+                        └ {sourceText}
+                      </Typography>
+                    ) : null;
+                  })()}
                 </TableCell>
                 <TableCell align="right">{formatKRW(invested)}</TableCell>
                 <TableCell align="right">
@@ -214,6 +235,14 @@ export default function InvestmentTable({ investments, prices, exchangeRate }: I
                     <ExpandMoreIcon />
                   </IconButton>
                 </Stack>
+                {(() => {
+                  const sourceText = formatSources(item.sources);
+                  return sourceText ? (
+                    <Typography color="gray5" fontSize="0.6rem">
+                      └ {sourceText}
+                    </Typography>
+                  ) : null;
+                })()}
                 <Stack spacing={0.25}>
                   {cash ? (
                     <Stack direction="row" justifyContent="space-between">

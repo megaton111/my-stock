@@ -1,3 +1,9 @@
+export interface SourceBreakdown {
+  investments?: number;
+  collect?: number;
+  dca?: number;
+}
+
 export interface Investment {
   id: string;
   name: string;
@@ -8,6 +14,7 @@ export interface Investment {
   currency: 'USD' | 'KRW';
   broker?: string;
   positionId?: number;
+  sources?: SourceBreakdown;
 }
 
 export type InvestmentInput = Omit<Investment, 'id'>;

@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import supabase from '@/lib/supabase';
 
+interface SourceBreakdown {
+  investments?: number;
+  collect?: number;
+  dca?: number;
+}
+
 interface MergedItem {
   id: string;
   name: string;
@@ -11,6 +17,7 @@ interface MergedItem {
   currency: string;
   broker: string;
   positionId?: number;
+  sources: SourceBreakdown;
 }
 
 function toInvestment(row: Record<string, unknown>): MergedItem {
@@ -24,6 +31,7 @@ function toInvestment(row: Record<string, unknown>): MergedItem {
     currency: String(row.currency),
     broker: row.broker ? String(row.broker) : '',
     positionId: row.position_id != null ? Number(row.position_id) : undefined,
+    sources: { investments: Number(row.quantity) },
   };
 }
 
@@ -59,6 +67,7 @@ function mergeEntries(
       const newQty = existing.quantity + totalQty;
       existing.avgPrice = (oldCost + totalAmount) / newQty;
       existing.quantity = newQty;
+      existing.sources[source] = totalQty;
       // broker가 비어있으면 entries의 broker로 채움
       if (!existing.broker && row.broker) existing.broker = String(row.broker);
     } else {
@@ -71,6 +80,7 @@ function mergeEntries(
         avgPrice: totalAmount / totalQty,
         currency: inferCurrency(ticker),
         broker: row.broker ? String(row.broker) : '',
+        sources: { [source]: totalQty },
       });
     }
   }
