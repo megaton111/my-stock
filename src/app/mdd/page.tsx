@@ -387,22 +387,6 @@ export default function MddPage() {
                 </Box>
 
                 <Stack direction="row" alignItems="center" spacing={0.5}>
-                  <Box onClick={(e) => e.stopPropagation()}>
-                    <ToggleButtonGroup
-                      value={row.range}
-                      exclusive
-                      size="small"
-                      disabled={row.loading}
-                      onChange={(_, v) => v && handleRangeChange(row.symbol, v)}
-                      sx={{ '& .MuiToggleButton-root': { px: 0.8, py: 0.2, fontSize: '0.7rem' } }}
-                    >
-                      <ToggleButton value="1y">1Y</ToggleButton>
-                      <ToggleButton value="2y">2Y</ToggleButton>
-                      <ToggleButton value="3y">3Y</ToggleButton>
-                      <ToggleButton value="5y">5Y</ToggleButton>
-                      <ToggleButton value="10y">10Y</ToggleButton>
-                    </ToggleButtonGroup>
-                  </Box>
                   <IconButton
                     size="small"
                     onClick={(e) => { e.stopPropagation(); setDeleteTarget({ symbol: row.symbol, name: row.name }); }}
@@ -424,6 +408,22 @@ export default function MddPage() {
               {/* 본문 */}
               <Collapse in={isExpanded} unmountOnExit>
                 <Box sx={{ px: 2, pb: 2 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1.5 }}>
+                    <ToggleButtonGroup
+                      value={row.range}
+                      exclusive
+                      size="small"
+                      disabled={row.loading}
+                      onChange={(_, v) => v && handleRangeChange(row.symbol, v)}
+                      sx={{ '& .MuiToggleButton-root': { px: 0.8, py: 0.2, fontSize: '0.7rem' } }}
+                    >
+                      <ToggleButton value="1y">1Y</ToggleButton>
+                      <ToggleButton value="2y">2Y</ToggleButton>
+                      <ToggleButton value="3y">3Y</ToggleButton>
+                      <ToggleButton value="5y">5Y</ToggleButton>
+                      <ToggleButton value="10y">10Y</ToggleButton>
+                    </ToggleButtonGroup>
+                  </Box>
                   <Box
                     sx={{
                       display: 'grid',
