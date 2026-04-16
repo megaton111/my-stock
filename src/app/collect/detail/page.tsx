@@ -14,6 +14,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
+import FlagIcon from '@mui/icons-material/Flag';
 import PageHeader from '@/components/PageHeader';
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis,
@@ -150,6 +151,9 @@ function CollectDetailContent() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [duplicateMsg, setDuplicateMsg] = useState<string | null>(null);
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
+  const [targetEditOpen, setTargetEditOpen] = useState(false);
+  const [targetEditValue, setTargetEditValue] = useState('');
+  const [targetSaving, setTargetSaving] = useState(false);
 
   // 기존 종목: DB에서 매수 기록 로드
   const fetchEntries = useCallback(async () => {
@@ -214,6 +218,45 @@ function CollectDetailContent() {
 
     setRegistered(true);
     setAdding(true);
+  };
+
+  // 목표수량 변경
+  const openTargetEdit = () => {
+    setTargetEditValue(String(fetchedTargetQuantity));
+    setTargetEditOpen(true);
+  };
+
+  const handleTargetSave = async () => {
+    if (!user || !ticker) return;
+    const next = Number(targetEditValue);
+    if (!Number.isInteger(next) || next <= 0) {
+      setSnackbar('목표수량은 1 이상의 정수여야 합니다.');
+      return;
+    }
+    if (next === fetchedTargetQuantity) {
+      setTargetEditOpen(false);
+      return;
+    }
+    setTargetSaving(true);
+    try {
+      const res = await fetch('/api/collect', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, ticker, targetQuantity: next }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        setSnackbar(err.error || '목표수량 변경에 실패했습니다.');
+        return;
+      }
+      setFetchedTargetQuantity(next);
+      setTargetEditOpen(false);
+    } catch (err) {
+      console.error('Failed to update target quantity:', err);
+      setSnackbar('목표수량 변경에 실패했습니다.');
+    } finally {
+      setTargetSaving(false);
+    }
   };
 
   // 투자 종료 (전체 삭제)
@@ -544,6 +587,16 @@ function CollectDetailContent() {
             </Box>
             {!isBusy && (
               <Stack direction="row" spacing={1} flexShrink={0}>
+                {!isNew && (
+                  <Button
+                    variant="outlined"
+                    startIcon={<FlagIcon />}
+                    onClick={openTargetEdit}
+                    sx={{ color: 'gray7', borderColor: 'gray3' }}
+                  >
+                    목표수량 변경
+                  </Button>
+                )}
                 <Button
                   variant="outlined"
                   color="error"
@@ -883,6 +936,53 @@ function CollectDetailContent() {
         )}
 
       </Stack>
+
+      <Dialog open={targetEditOpen} onClose={() => !targetSaving && setTargetEditOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>목표수량 변경</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Typography variant="body2" color="gray6">
+              현재 목표수량: <strong>{fetchedTargetQuantity.toLocaleString()}주</strong>
+            </Typography>
+            <TextField
+              label="새 목표수량"
+              type="number"
+              value={targetEditValue}
+              onChange={(e) => setTargetEditValue(e.target.value)}
+              autoFocus
+              fullWidth
+              slotProps={{ htmlInput: { min: 1, step: 1 } }}
+            />
+            {(() => {
+              const next = Number(targetEditValue);
+              if (!next || !summary) return null;
+              if (summary.totalQuantity > next) {
+                return (
+                  <Typography variant="body2" color="warning.main">
+                    현재수량({summary.totalQuantity.toLocaleString()}주)이 새 목표수량을 초과합니다. 달성률이 100%로 표시됩니다.
+                  </Typography>
+                );
+              }
+              return null;
+            })()}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTargetEditOpen(false)} disabled={targetSaving}>취소</Button>
+          <Button
+            onClick={handleTargetSave}
+            variant="contained"
+            disabled={
+              targetSaving ||
+              !targetEditValue ||
+              Number(targetEditValue) === fetchedTargetQuantity ||
+              Number(targetEditValue) <= 0
+            }
+          >
+            {targetSaving ? '저장 중...' : '저장'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)}>
         <DialogTitle>주식 모으기 종료</DialogTitle>
