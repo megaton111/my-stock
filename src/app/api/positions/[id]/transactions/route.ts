@@ -79,6 +79,7 @@ export async function GET(
       quantity: Number(b.buy_quantity),
       price: Number(b.buy_price),
       currency: b.currency,
+      exchangeRate: b.exchange_rate != null ? Number(b.exchange_rate) : undefined,
     })),
     ...sells.map((s): TransactionItem => ({
       id: s.id,

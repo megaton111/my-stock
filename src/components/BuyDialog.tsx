@@ -15,6 +15,14 @@ export interface BuySubmitData {
   exchangeRate: number;
 }
 
+export interface BuyEditInitial {
+  id: number;
+  date: string;
+  quantity: number;
+  price: number;
+  exchangeRate: number;
+}
+
 interface BuyDialogProps {
   open: boolean;
   onClose: () => void;
@@ -22,6 +30,7 @@ interface BuyDialogProps {
   investment: Investment | null;
   currentPrice?: number;
   currentExchangeRate: number;
+  editTransaction?: BuyEditInitial | null;
 }
 
 function todayString() {
@@ -35,7 +44,9 @@ export default function BuyDialog({
   investment,
   currentPrice,
   currentExchangeRate,
+  editTransaction,
 }: BuyDialogProps) {
+  const isEdit = !!editTransaction;
   const [buyDate, setBuyDate] = useState(todayString());
   const [buyQuantity, setBuyQuantity] = useState<number>(0);
   const [buyPrice, setBuyPrice] = useState<number>(0);
@@ -44,13 +55,20 @@ export default function BuyDialog({
 
   useEffect(() => {
     if (open && investment) {
-      setBuyDate(todayString());
-      setBuyQuantity(0);
-      setBuyPrice(currentPrice ?? investment.avgPrice);
-      setExchangeRate(currentExchangeRate);
+      if (editTransaction) {
+        setBuyDate(editTransaction.date);
+        setBuyQuantity(editTransaction.quantity);
+        setBuyPrice(editTransaction.price);
+        setExchangeRate(editTransaction.exchangeRate || currentExchangeRate);
+      } else {
+        setBuyDate(todayString());
+        setBuyQuantity(0);
+        setBuyPrice(currentPrice ?? investment.avgPrice);
+        setExchangeRate(currentExchangeRate);
+      }
       setSubmitting(false);
     }
-  }, [open, investment, currentPrice, currentExchangeRate]);
+  }, [open, investment, currentPrice, currentExchangeRate, editTransaction]);
 
   const isUSD = investment?.currency === 'USD';
   const heldQty = investment?.quantity ?? 0;
@@ -95,7 +113,7 @@ export default function BuyDialog({
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ fontWeight: 700 }}>
-        {investment.name} 추가매수
+        {investment.name} {isEdit ? '매수 내역 수정' : '추가매수'}
       </DialogTitle>
       <DialogContent>
         <Stack spacing={2.5} sx={{ mt: 1 }}>
@@ -160,44 +178,52 @@ export default function BuyDialog({
           <Divider />
 
           {/* 매수 후 예상 미리보기 */}
-          <Box sx={{ p: 1.5, bgcolor: 'gray1', borderRadius: 1 }}>
-            <Typography variant="body2" color="gray6" sx={{ mb: 0.5 }}>
-              매수 후 예상
-            </Typography>
-            {error ? (
-              <Typography variant="body2" color="error.main">{error}</Typography>
-            ) : valid ? (
-              <Stack spacing={0.5}>
-                <Stack direction="row" justifyContent="space-between">
-                  <Typography variant="body2" color="gray6">새 보유 수량</Typography>
-                  <Typography variant="body2" fontWeight={600}>
-                    {newQty.toLocaleString()}
-                  </Typography>
-                </Stack>
-                <Stack direction="row" justifyContent="space-between">
-                  <Typography variant="body2" color="gray6">새 평균 매입가</Typography>
-                  <Typography variant="body2" fontWeight={600}>
-                    {formatCurrency(newAvg, investment.currency)}
-                  </Typography>
-                </Stack>
-                <Stack direction="row" justifyContent="space-between">
-                  <Typography variant="body2" color="gray6">추가 매수금액</Typography>
-                  <Typography variant="body2" fontWeight={700}>
-                    {formatCurrency(addCostKrw, 'KRW')}
-                    {isUSD && (
-                      <Typography component="span" variant="caption" color="gray5" sx={{ ml: 0.5 }}>
-                        ({addCost.toFixed(2)} USD)
-                      </Typography>
-                    )}
-                  </Typography>
-                </Stack>
-              </Stack>
-            ) : (
-              <Typography variant="body2" color="gray5">
-                매수 수량과 단가를 입력해주세요
+          {isEdit ? (
+            <Box sx={{ p: 1.5, bgcolor: 'gray1', borderRadius: 1 }}>
+              <Typography variant="body2" color="gray6">
+                수정 시 보유 수량과 평균 매입가가 자동으로 재계산됩니다.
               </Typography>
-            )}
-          </Box>
+            </Box>
+          ) : (
+            <Box sx={{ p: 1.5, bgcolor: 'gray1', borderRadius: 1 }}>
+              <Typography variant="body2" color="gray6" sx={{ mb: 0.5 }}>
+                매수 후 예상
+              </Typography>
+              {error ? (
+                <Typography variant="body2" color="error.main">{error}</Typography>
+              ) : valid ? (
+                <Stack spacing={0.5}>
+                  <Stack direction="row" justifyContent="space-between">
+                    <Typography variant="body2" color="gray6">새 보유 수량</Typography>
+                    <Typography variant="body2" fontWeight={600}>
+                      {newQty.toLocaleString()}
+                    </Typography>
+                  </Stack>
+                  <Stack direction="row" justifyContent="space-between">
+                    <Typography variant="body2" color="gray6">새 평균 매입가</Typography>
+                    <Typography variant="body2" fontWeight={600}>
+                      {formatCurrency(newAvg, investment.currency)}
+                    </Typography>
+                  </Stack>
+                  <Stack direction="row" justifyContent="space-between">
+                    <Typography variant="body2" color="gray6">추가 매수금액</Typography>
+                    <Typography variant="body2" fontWeight={700}>
+                      {formatCurrency(addCostKrw, 'KRW')}
+                      {isUSD && (
+                        <Typography component="span" variant="caption" color="gray5" sx={{ ml: 0.5 }}>
+                          ({addCost.toFixed(2)} USD)
+                        </Typography>
+                      )}
+                    </Typography>
+                  </Stack>
+                </Stack>
+              ) : (
+                <Typography variant="body2" color="gray5">
+                  매수 수량과 단가를 입력해주세요
+                </Typography>
+              )}
+            </Box>
+          )}
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2.5 }}>
@@ -208,7 +234,7 @@ export default function BuyDialog({
           color="primary"
           disabled={!valid || submitting}
         >
-          {submitting ? '처리 중...' : '매수'}
+          {submitting ? '처리 중...' : isEdit ? '수정' : '매수'}
         </Button>
       </DialogActions>
     </Dialog>

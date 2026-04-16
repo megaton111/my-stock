@@ -2,16 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import {
-  Box, Stack, Typography, Chip, Divider, CircularProgress, Skeleton,
+  Box, Stack, Typography, Chip, Divider, CircularProgress, Skeleton, IconButton,
 } from '@mui/material';
+import EditIcon from '@mui/icons-material/EditOutlined';
 import { formatCurrency, formatProfit, profitColor } from '@/utils/format';
 import type { PositionHistoryResponse, TransactionItem } from '@/app/api/positions/[id]/transactions/route';
 
 interface PositionHistoryProps {
   positionId: number;
+  refreshKey?: number;
+  onEditBuy?: (tx: TransactionItem) => void;
 }
 
-export default function PositionHistory({ positionId }: PositionHistoryProps) {
+export default function PositionHistory({ positionId, refreshKey, onEditBuy }: PositionHistoryProps) {
   const [data, setData] = useState<PositionHistoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -38,7 +41,7 @@ export default function PositionHistory({ positionId }: PositionHistoryProps) {
         }
       });
     return () => { cancelled = true; };
-  }, [positionId]);
+  }, [positionId, refreshKey]);
 
   if (loading) {
     return (
@@ -112,7 +115,12 @@ export default function PositionHistory({ positionId }: PositionHistoryProps) {
       ) : (
         <Stack spacing={0.75}>
           {data.transactions.map((tx) => (
-            <TransactionRow key={`${tx.type}-${tx.id}`} tx={tx} currency={currency} />
+            <TransactionRow
+              key={`${tx.type}-${tx.id}`}
+              tx={tx}
+              currency={currency}
+              onEditBuy={onEditBuy}
+            />
           ))}
         </Stack>
       )}
@@ -120,13 +128,22 @@ export default function PositionHistory({ positionId }: PositionHistoryProps) {
   );
 }
 
-function TransactionRow({ tx, currency }: { tx: TransactionItem; currency: 'USD' | 'KRW' }) {
+function TransactionRow({
+  tx,
+  currency,
+  onEditBuy,
+}: {
+  tx: TransactionItem;
+  currency: 'USD' | 'KRW';
+  onEditBuy?: (tx: TransactionItem) => void;
+}) {
   const isSell = tx.type === 'sell';
+  const canEdit = !isSell && !!onEditBuy;
   return (
     <Box
       sx={{
         display: 'grid',
-        gridTemplateColumns: { xs: '60px 1fr', sm: '90px 50px 1fr auto' },
+        gridTemplateColumns: { xs: '60px 1fr auto', sm: '90px 50px 1fr auto auto' },
         alignItems: 'center',
         gap: { xs: 0.5, sm: 1.5 },
         px: 1,
@@ -164,15 +181,29 @@ function TransactionRow({ tx, currency }: { tx: TransactionItem; currency: 'USD'
           @ {formatCurrency(tx.price, currency)}
         </Typography>
       </Stack>
-      {isSell && tx.realizedPlKrw != null && (
+      {isSell && tx.realizedPlKrw != null ? (
         <Typography
           variant="body2"
           fontWeight={700}
           color={profitColor(tx.realizedPlKrw)}
-          sx={{ fontSize: '0.75rem', textAlign: 'right', gridColumn: { xs: '1 / -1', sm: 'auto' } }}
+          sx={{ fontSize: '0.75rem', textAlign: 'right' }}
         >
           {formatProfit(tx.realizedPlKrw)}
         </Typography>
+      ) : (
+        <Box />
+      )}
+      {canEdit ? (
+        <IconButton
+          size="small"
+          onClick={() => onEditBuy!(tx)}
+          sx={{ p: 0.25 }}
+          aria-label="매수 내역 수정"
+        >
+          <EditIcon sx={{ fontSize: 16 }} />
+        </IconButton>
+      ) : (
+        <Box />
       )}
     </Box>
   );

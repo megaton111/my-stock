@@ -21,8 +21,9 @@ import { isCash } from '@/utils/assetClass';
 import PageHeader from '@/components/PageHeader';
 import InvestmentFormDialog from '@/components/InvestmentFormDialog';
 import SellDialog, { SellSubmitData } from '@/components/SellDialog';
-import BuyDialog, { BuySubmitData } from '@/components/BuyDialog';
+import BuyDialog, { BuySubmitData, BuyEditInitial } from '@/components/BuyDialog';
 import PositionHistory from '@/components/PositionHistory';
+import type { TransactionItem } from '@/app/api/positions/[id]/transactions/route';
 import { useRouter } from 'next/navigation';
 
 /** collect-* / dca-* 접두사 ID로 병합 항목 여부를 판별 */
@@ -84,7 +85,9 @@ export default function InvestmentsPage() {
   const [deleting, setDeleting] = useState<Investment | null>(null);
   const [selling, setSelling] = useState<Investment | null>(null);
   const [buying, setBuying] = useState<Investment | null>(null);
+  const [editingBuyTx, setEditingBuyTx] = useState<BuyEditInitial | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [positionRefreshKey, setPositionRefreshKey] = useState(0);
   const [redirectTarget, setRedirectTarget] = useState<{ name: string; source: 'collect' | 'dca' } | null>(null);
   const [closedPositions, setClosedPositions] = useState<ClosedPositionItem[]>([]);
   const [closedLoading, setClosedLoading] = useState(true);
@@ -160,17 +163,36 @@ export default function InvestmentsPage() {
 
   const handleBuy = async (data: BuySubmitData) => {
     if (!buying) return;
-    const res = await fetch(`/api/investments/${buying.id}/buy`, {
-      method: 'POST',
+    const isEdit = !!editingBuyTx;
+    const url = isEdit
+      ? `/api/buy-transactions/${editingBuyTx!.id}`
+      : `/api/investments/${buying.id}/buy`;
+    const res = await fetch(url, {
+      method: isEdit ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
     if (!res.ok) {
-      const { error } = await res.json().catch(() => ({ error: '추가매수 처리 중 오류가 발생했습니다.' }));
-      throw new Error(error || '추가매수 처리 실패');
+      const { error } = await res.json().catch(() => ({
+        error: isEdit ? '매수 수정 처리 중 오류가 발생했습니다.' : '추가매수 처리 중 오류가 발생했습니다.',
+      }));
+      throw new Error(error || (isEdit ? '매수 수정 실패' : '추가매수 처리 실패'));
     }
     setBuying(null);
+    setEditingBuyTx(null);
+    setPositionRefreshKey((k) => k + 1);
     refetch();
+  };
+
+  const openEditBuy = (item: Investment, tx: TransactionItem) => {
+    setBuying(item);
+    setEditingBuyTx({
+      id: tx.id,
+      date: tx.date,
+      quantity: tx.quantity,
+      price: tx.price,
+      exchangeRate: tx.exchangeRate ?? exchangeRate,
+    });
   };
 
   const handleSell = async (data: SellSubmitData) => {
@@ -185,6 +207,7 @@ export default function InvestmentsPage() {
       throw new Error(error || '매도 처리 실패');
     }
     setSelling(null);
+    setPositionRefreshKey((k) => k + 1);
     refetch();
   };
 
@@ -355,7 +378,11 @@ export default function InvestmentsPage() {
                   {expanded && item.positionId && (
                     <TableRow>
                       <TableCell colSpan={COLUMNS.length} sx={{ p: 0, bgcolor: 'gray1' }}>
-                        <PositionHistory positionId={item.positionId} />
+                        <PositionHistory
+                          positionId={item.positionId}
+                          refreshKey={positionRefreshKey}
+                          onEditBuy={(tx) => openEditBuy(item, tx)}
+                        />
                       </TableCell>
                     </TableRow>
                   )}
@@ -467,7 +494,11 @@ export default function InvestmentsPage() {
                       </Stack>
                       {expanded && item.positionId && (
                         <Box sx={{ mx: -1.5, mb: -1, mt: 0.5 }} onClick={stopPropagation}>
-                          <PositionHistory positionId={item.positionId} />
+                          <PositionHistory
+                            positionId={item.positionId}
+                            refreshKey={positionRefreshKey}
+                            onEditBuy={(tx) => openEditBuy(item, tx)}
+                          />
                         </Box>
                       )}
                     </Stack>
@@ -629,11 +660,12 @@ export default function InvestmentsPage() {
 
       <BuyDialog
         open={!!buying}
-        onClose={() => setBuying(null)}
+        onClose={() => { setBuying(null); setEditingBuyTx(null); }}
         onSubmit={handleBuy}
         investment={buying}
         currentPrice={buying ? prices[buying.ticker] : undefined}
         currentExchangeRate={exchangeRate}
+        editTransaction={editingBuyTx}
       />
     </Container>
   );
