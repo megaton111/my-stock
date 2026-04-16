@@ -8,7 +8,13 @@ const FETCH_HEADERS = {
 };
 
 interface YahooChartResult {
-  meta: { currency: string; shortName?: string; longName?: string; symbol: string };
+  meta: {
+    currency: string;
+    shortName?: string;
+    longName?: string;
+    symbol: string;
+    exchangeTimezoneName?: string;
+  };
   timestamp: number[];
   indicators: {
     quote: Array<{ close: (number | null)[] }>;
@@ -48,7 +54,12 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=${range}`;
+    // range=max일 때 Yahoo가 interval=1d를 무시하고 월봉으로 집계하는 버그 회피.
+    // period1/period2로 명시해야 일봉이 유지됨.
+    const base = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`;
+    const url = range === 'max'
+      ? `${base}?interval=1d&period1=0&period2=${Math.floor(Date.now() / 1000)}`
+      : `${base}?interval=1d&range=${range}`;
     const res = await fetch(url, { headers: FETCH_HEADERS });
 
     if (!res.ok) {
@@ -63,13 +74,20 @@ export async function GET(request: NextRequest) {
     }
 
     const closes = result.indicators.quote[0].close;
+    const timeZone = result.meta.exchangeTimezoneName || 'UTC';
+    const dateFormatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
     const history: HistoryPoint[] = [];
 
     for (let i = 0; i < result.timestamp.length; i++) {
       const close = closes[i];
       if (close == null) continue;
-      const d = new Date(result.timestamp[i] * 1000);
-      const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      // 거래소 현지 시각 기준 날짜 추출 (서버 타임존 영향 제거)
+      const date = dateFormatter.format(new Date(result.timestamp[i] * 1000));
       history.push({ date, close });
     }
 
