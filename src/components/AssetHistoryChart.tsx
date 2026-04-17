@@ -3,16 +3,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Box, Paper, Stack, Typography, ToggleButtonGroup, ToggleButton,
-  CircularProgress, Collapse, Button, Chip,
+  CircularProgress, Collapse, Button, Chip, Tooltip, IconButton,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
-  CartesianGrid, Tooltip,
+  CartesianGrid, Tooltip as RechartsTooltip,
 } from 'recharts';
 import { formatKRW } from '@/utils/format';
 
@@ -149,9 +150,21 @@ export default function AssetHistoryChart({ userId }: AssetHistoryChartProps) {
       <Stack spacing={2}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} spacing={1}>
           <Box>
-            <Typography variant="body2" color="gray6" gutterBottom>
-              자산 추이
-            </Typography>
+            <Stack direction="row" alignItems="center" spacing={0.5}>
+              <Typography variant="body2" color="gray6">
+                자산 추이
+              </Typography>
+              <Tooltip
+                title="선택한 기간의 첫날과 마지막 날의 총 평가금액 차이를 표시합니다. 아래 '종목별 변동 자세히 보기'는 직전 스냅샷 대비 변동입니다."
+                arrow
+                enterTouchDelay={0}
+                leaveTouchDelay={3000}
+              >
+                <IconButton size="small" sx={{ p: 0.25, color: 'text.disabled' }}>
+                  <InfoOutlinedIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+            </Stack>
             {data.length > 0 && (
               <Typography
                 variant="body1"
@@ -224,7 +237,7 @@ export default function AssetHistoryChart({ userId }: AssetHistoryChartProps) {
                   }}
                   width={50}
                 />
-                <Tooltip
+                <RechartsTooltip
                   content={({ active, payload }) => {
                     if (!active || !payload?.length) return null;
                     const d = payload[0].payload as ChartData;
