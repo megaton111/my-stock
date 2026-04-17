@@ -153,7 +153,7 @@ export default function InvestmentTable({ investments, prices, exchangeRate }: I
             {sortedRows.map(({ item, price, invested, current, profit, rate }) => {
               const cash = isCash(item.ticker);
               return (
-              <TableRow key={item.ticker} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+              <TableRow key={item.id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                 <TableCell>
                   <Typography
                     fontWeight={600}
@@ -204,11 +204,11 @@ export default function InvestmentTable({ investments, prices, exchangeRate }: I
       {/* 모바일: 카드 리스트 */}
       <Box sx={{ display: { xs: 'grid', md: 'none' }, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1, width: 1 }}>
         {sortedRows.map(({ item, price, invested, current, profit, rate }) => {
-          const expanded = expandedCards.has(item.ticker);
+          const expanded = expandedCards.has(item.id);
           const cash = isCash(item.ticker);
           return (
             <Paper
-              key={item.ticker}
+              key={item.id}
               sx={{ px: 1.5, py: 1, borderRadius: 2 }}
             >
               <Stack spacing={.5}>
@@ -226,7 +226,7 @@ export default function InvestmentTable({ investments, prices, exchangeRate }: I
                   </Typography>
                   <IconButton
                     size="small"
-                    onClick={() => toggleCard(item.ticker)}
+                    onClick={() => toggleCard(item.id)}
                     sx={{
                       transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
                       transition: 'transform 0.2s',

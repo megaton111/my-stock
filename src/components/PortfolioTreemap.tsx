@@ -184,7 +184,7 @@ export default function PortfolioTreemap({ investments, prices, exchangeRate }: 
       {/* 범례 */}
       <Box sx={{ display: 'flex', gap: 3, mt: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
         {data.map((item) => (
-          <Box key={item.ticker} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Box key={`${item.ticker}-${item.name}`} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <Box
               sx={{
                 width: 12,

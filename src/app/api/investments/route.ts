@@ -116,10 +116,12 @@ export async function GET(request: NextRequest) {
   }
 
   // 1) investments를 ticker 기준 맵으로 변환
+  //    현금(CASH-*)은 증권사마다 별도 항목이므로 id를 키로 사용
   const map = new Map<string, MergedItem>();
   for (const row of (investResult.data ?? [])) {
     const item = toInvestment(row);
-    map.set(item.ticker, item);
+    const key = item.ticker.startsWith('CASH-') ? `${item.ticker}-${item.id}` : item.ticker;
+    map.set(key, item);
   }
 
   // 2) collect_entries 집계 후 병합
