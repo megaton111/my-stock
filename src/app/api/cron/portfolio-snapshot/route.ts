@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
   const [investResult, collectResult, dcaResult] = await Promise.all([
     supabase
       .from('investments')
-      .select('user_id, ticker, name, avg_price, quantity, currency'),
+      .select('id, user_id, ticker, name, avg_price, quantity, currency'),
     supabase
       .from('collect_entries')
       .select('user_id, stock_name, ticker, amount, quantity'),
@@ -109,9 +109,12 @@ export async function GET(request: NextRequest) {
   const investments = investResult.data ?? [];
 
   // investments를 user_id:ticker 기준 맵으로 변환
+  //   현금(CASH-*)은 증권사마다 별도 항목이므로 id를 키에 포함하여 병합 방지
   const mergedMap = new Map<string, MergedInvestment>();
   for (const inv of investments) {
-    const key = `${inv.user_id}:${inv.ticker}`;
+    const isCashItem = inv.ticker.startsWith('CASH-');
+    const snapshotTicker = isCashItem ? `${inv.ticker}-${inv.id}` : inv.ticker;
+    const key = `${inv.user_id}:${snapshotTicker}`;
     const existing = mergedMap.get(key);
     if (existing) {
       const oldCost = existing.avg_price * existing.quantity;
@@ -119,7 +122,7 @@ export async function GET(request: NextRequest) {
       existing.avg_price = (oldCost + inv.avg_price * inv.quantity) / newQty;
       existing.quantity = newQty;
     } else {
-      mergedMap.set(key, { ...inv });
+      mergedMap.set(key, { ...inv, ticker: snapshotTicker });
     }
   }
 
@@ -137,10 +140,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ message: '투자 항목이 없습니다.' });
   }
 
-  // 고유 티커 + 환율 심볼 수집
+  // 고유 티커 + 환율 심볼 수집 (현금은 시세 조회 불필요)
   const tickers = new Set<string>();
   for (const inv of allInvestments) {
-    tickers.add(inv.ticker);
+    if (!inv.ticker.startsWith('CASH-')) tickers.add(inv.ticker);
   }
   tickers.add(EXCHANGE_RATE_SYMBOL);
 
