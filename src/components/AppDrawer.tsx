@@ -2,30 +2,24 @@
 
 import { useState } from 'react';
 import {
-  Drawer, Box, List, ListItem, ListItemButton, ListItemIcon, ListItemText,
+  Drawer, Box, List, ListItem, ListItemButton, ListItemText,
   Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button,
+  Typography, GlobalStyles, useMediaQuery,
 } from '@mui/material';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import ListAltIcon from '@mui/icons-material/ListAlt';
-import ShowChartIcon from '@mui/icons-material/ShowChart';
-import SavingsIcon from '@mui/icons-material/Savings';
-import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import TrendingDownIcon from '@mui/icons-material/TrendingDown';
-import LogoutIcon from '@mui/icons-material/Logout';
-import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
-import PolicyIcon from '@mui/icons-material/Policy';
+import { useTheme } from '@mui/material/styles';
 import { useRouter, usePathname } from 'next/navigation';
 import { useUser } from '@/hooks/useUser';
 
 const MENU_ITEMS = [
-  { label: '대시보드', path: '/dashboard', icon: <DashboardIcon fontSize="small" /> },
-  { label: '투자내역 관리', path: '/investments', icon: <ListAltIcon fontSize="small" /> },
-  { label: '주식 모으기', path: '/collect', icon: <SavingsIcon fontSize="small" /> },
-  { label: '적립식 매수', path: '/dca', icon: <CalendarMonthIcon fontSize="small" /> },
-  { label: 'MDD 분석', path: '/mdd', icon: <TrendingDownIcon fontSize="small" /> },
-  { label: '주식정보', path: '/market', icon: <ShowChartIcon fontSize="small" /> },
-  // { label: '설정', path: '/settings', icon: <SettingsIcon fontSize="small" /> },
+  { label: '대시보드', path: '/dashboard' },
+  { label: '투자내역 관리', path: '/investments' },
+  { label: '주식 모으기', path: '/collect' },
+  { label: '적립식 매수', path: '/dca' },
+  { label: 'MDD 분석', path: '/mdd' },
+  { label: '주식정보', path: '/market' },
 ];
+
+const SIDEBAR_WIDTH = 280;
 
 interface AppDrawerProps {
   open: boolean;
@@ -33,6 +27,8 @@ interface AppDrawerProps {
 }
 
 export default function AppDrawer({ open, onClose }: AppDrawerProps) {
+  const theme = useTheme();
+  const isWideScreen = useMediaQuery(theme.breakpoints.up('lg'));
   const router = useRouter();
   const pathname = usePathname();
   const { user, signOut } = useUser();
@@ -41,7 +37,6 @@ export default function AppDrawer({ open, onClose }: AppDrawerProps) {
   const handleDeleteAccount = async () => {
     if (!user) return;
     try {
-      // 현재 세션에서 provider 정보와 토큰 가져오기
       const supabase = (await import('@/lib/supabase-browser')).createClient();
       const { data: { session } } = await supabase.auth.getSession();
       const provider = session?.user?.app_metadata?.provider;
@@ -60,80 +55,138 @@ export default function AppDrawer({ open, onClose }: AppDrawerProps) {
   };
 
   const handleNavigate = (path: string) => {
-    onClose();
+    if (!isWideScreen) onClose();
     router.push(path);
   };
 
-  return (
-    <Drawer anchor="right" open={open} onClose={onClose}>
-      <Box sx={{ width: 250, p: 2 }} role="presentation">
-        <List>
-          {MENU_ITEMS.map((item) => (
-            <ListItem key={item.label} disablePadding>
-              <ListItemButton
-                selected={pathname === item.path}
-                onClick={() => handleNavigate(item.path)}
-                sx={{
-                  borderRadius: 1,
-                  '&.Mui-selected': { bgcolor: 'gray1', color: 'primary.main' },
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 36, color: 'inherit' }}>
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText primary={item.label} />
-              </ListItemButton>
-            </ListItem>
-          ))}
-          <ListItem disablePadding sx={{ mt: 2, borderTop: '1px solid', borderColor: 'gray2', pt: 2 }}>
-            <ListItemButton
-              onClick={() => handleNavigate('/privacy')}
-              sx={{ borderRadius: 1, color: 'gray6' }}
-            >
-              <ListItemIcon sx={{ minWidth: 36, color: 'inherit' }}>
-                <PolicyIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText primary="개인정보처리방침" />
-            </ListItemButton>
-          </ListItem>
-          <ListItem disablePadding>
-            <ListItemButton
-              onClick={() => { onClose(); signOut(); }}
-              sx={{ borderRadius: 1, color: 'gray6' }}
-            >
-              <ListItemIcon sx={{ minWidth: 36, color: 'inherit' }}>
-                <LogoutIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText primary="로그아웃" />
-            </ListItemButton>
-          </ListItem>
-          <ListItem disablePadding>
-            <ListItemButton
-              onClick={() => setDeleteOpen(true)}
-              sx={{ borderRadius: 1, color: 'error.main' }}
-            >
-              <ListItemIcon sx={{ minWidth: 36, color: 'inherit' }}>
-                <PersonRemoveIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText primary="회원 탈퇴" />
-            </ListItemButton>
-          </ListItem>
-        </List>
-      </Box>
+  const displayName = user?.email?.split('@')[0] || '';
 
-      <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)}>
-        <DialogTitle>회원 탈퇴</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            탈퇴 시 모든 투자 데이터가 삭제되며 복구할 수 없습니다.
-            정말 탈퇴하시겠습니까?
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteOpen(false)}>취소</Button>
-          <Button onClick={handleDeleteAccount} color="error" variant="contained">탈퇴</Button>
-        </DialogActions>
-      </Dialog>
-    </Drawer>
+  const mainMenu = (
+    <List disablePadding>
+      {MENU_ITEMS.map((item) => (
+        <ListItem
+          key={item.label}
+          disablePadding
+          sx={{ borderBottom: '1px solid', borderColor: 'gray2' }}
+        >
+          <ListItemButton
+            selected={pathname === item.path}
+            onClick={() => handleNavigate(item.path)}
+            sx={{
+              py: 1.5,
+              '&.Mui-selected': { bgcolor: 'gray1', color: 'primary.main' },
+            }}
+          >
+            <ListItemText primary={item.label} />
+          </ListItemButton>
+        </ListItem>
+      ))}
+    </List>
+  );
+
+  const bottomMenu = (
+    <List disablePadding>
+      <ListItem disablePadding sx={{ borderTop: '1px solid', borderColor: 'gray2' }}>
+        <ListItemButton
+          onClick={() => handleNavigate('/privacy')}
+          sx={{ py: 1.5, color: 'gray6' }}
+        >
+          <ListItemText primary="개인정보처리방침" />
+        </ListItemButton>
+      </ListItem>
+      <ListItem disablePadding sx={{ borderTop: '1px solid', borderColor: 'gray2' }}>
+        <ListItemButton
+          onClick={() => { if (!isWideScreen) onClose(); signOut(); }}
+          sx={{ py: 1.5, color: 'gray6' }}
+        >
+          <ListItemText primary="로그아웃" />
+        </ListItemButton>
+      </ListItem>
+      <ListItem disablePadding sx={{ borderTop: '1px solid', borderColor: 'gray2' }}>
+        <ListItemButton
+          onClick={() => setDeleteOpen(true)}
+          sx={{ py: 1.5, color: 'error.main' }}
+        >
+          <ListItemText primary="회원 탈퇴" />
+        </ListItemButton>
+      </ListItem>
+    </List>
+  );
+
+  const deleteDialog = (
+    <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)}>
+      <DialogTitle>회원 탈퇴</DialogTitle>
+      <DialogContent>
+        <DialogContentText>
+          탈퇴 시 모든 투자 데이터가 삭제되며 복구할 수 없습니다.
+          정말 탈퇴하시겠습니까?
+        </DialogContentText>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setDeleteOpen(false)}>취소</Button>
+        <Button onClick={handleDeleteAccount} color="error" variant="contained">탈퇴</Button>
+      </DialogActions>
+    </Dialog>
+  );
+
+  if (isWideScreen) {
+    return (
+      <>
+        <GlobalStyles styles={{
+          body: { paddingRight: `${SIDEBAR_WIDTH}px !important` },
+        }} />
+        <Box
+          component="nav"
+          sx={{
+            position: 'fixed',
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: SIDEBAR_WIDTH,
+            borderLeft: '1px solid',
+            borderColor: 'gray2',
+            bgcolor: 'background.paper',
+            overflowY: 'auto',
+            zIndex: theme.zIndex.appBar,
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <Box sx={{ px: 2, pt: 3, pb: 2 }}>
+            {displayName && (
+              <Typography variant="body2" fontWeight={600} color="gray7">
+                {displayName}님
+              </Typography>
+            )}
+          </Box>
+          <Box sx={{ flex: 1 }}>
+            {mainMenu}
+          </Box>
+          <Box>
+            {bottomMenu}
+          </Box>
+        </Box>
+        {deleteDialog}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Drawer anchor="right" open={open} onClose={onClose}>
+        <Box
+          sx={{ width: 250, display: 'flex', flexDirection: 'column', height: '100%' }}
+          role="presentation"
+        >
+          <Box sx={{ flex: 1 }}>
+            {mainMenu}
+          </Box>
+          <Box>
+            {bottomMenu}
+          </Box>
+        </Box>
+      </Drawer>
+      {deleteDialog}
+    </>
   );
 }

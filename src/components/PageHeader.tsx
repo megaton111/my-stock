@@ -34,7 +34,12 @@ export default function PageHeader({ left }: PageHeaderProps) {
         </Box>
       )}
 
-      <Stack direction="row" alignItems="center" spacing={1.5} sx={{ position: 'absolute', top: 24, right: 24 }}>
+      <Stack
+        direction="row"
+        alignItems="center"
+        spacing={1.5}
+        sx={{ position: 'absolute', top: 24, right: 24, display: { lg: 'none' } }}
+      >
         {displayName && (
           <Typography variant="body2" fontWeight={600} color="gray7">
             {displayName}님
