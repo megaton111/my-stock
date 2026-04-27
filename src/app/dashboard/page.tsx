@@ -19,6 +19,7 @@ import AssetAllocationWidget from '@/components/AssetAllocationWidget';
 import DividendWidget from '@/components/DividendWidget';
 import ProgressWidget from '@/components/ProgressWidget';
 import RealizedPlWidget from '@/components/RealizedPlWidget';
+import IpoProfitWidget from '@/components/IpoProfitWidget';
 import PageHeader from '@/components/PageHeader';
 import { useRouter } from 'next/navigation';
 
@@ -186,6 +187,9 @@ export default function DashboardPage() {
         ) : (
           <DividendWidget investments={investments} exchangeRate={exchangeRate} />
         )}
+
+        {/* 공모주 수익 */}
+        <IpoProfitWidget />
 
         {/* 적립식/모으기 진행률 — 독립 위젯 */}
         {dataLoading && (

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import {
-  Drawer, Box, List, ListItem, ListItemButton, ListItemText,
+  Drawer, Box, List, ListItem, ListItemButton, ListItemText, Collapse,
   Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button,
   Typography, GlobalStyles, useMediaQuery,
 } from '@mui/material';
@@ -10,12 +10,25 @@ import { useTheme } from '@mui/material/styles';
 import { useRouter, usePathname } from 'next/navigation';
 import { useUser } from '@/hooks/useUser';
 
-const MENU_ITEMS = [
+interface MenuItem {
+  label: string;
+  path?: string;
+  children?: { label: string; path: string }[];
+}
+
+const MENU_ITEMS: MenuItem[] = [
   { label: '대시보드', path: '/dashboard' },
   { label: '투자내역 관리', path: '/investments' },
   { label: '주식 모으기', path: '/collect' },
   { label: '적립식 매수', path: '/dca' },
   { label: 'MDD 분석', path: '/mdd' },
+  {
+    label: '공모주',
+    children: [
+      { label: '일정', path: '/ipo' },
+      { label: '나의 공모주', path: '/ipo/my' },
+    ],
+  },
   { label: '주식정보', path: '/market' },
 ];
 
@@ -63,24 +76,64 @@ export default function AppDrawer({ open, onClose }: AppDrawerProps) {
 
   const mainMenu = (
     <List disablePadding>
-      {MENU_ITEMS.map((item) => (
-        <ListItem
-          key={item.label}
-          disablePadding
-          sx={{ borderBottom: '1px solid', borderColor: 'gray2' }}
-        >
-          <ListItemButton
-            selected={pathname === item.path}
-            onClick={() => handleNavigate(item.path)}
-            sx={{
-              py: 1.5,
-              '&.Mui-selected': { bgcolor: 'gray1', color: 'primary.main' },
-            }}
+      {MENU_ITEMS.map((item) => {
+        if (item.children) {
+          const defaultPath = item.children[0].path;
+          const isGroupActive = item.children.some((c) => pathname === c.path);
+          return (
+            <Box key={item.label} sx={{ borderBottom: '1px solid', borderColor: 'gray2' }}>
+              <ListItem disablePadding>
+                <ListItemButton
+                  selected={isGroupActive}
+                  onClick={() => handleNavigate(defaultPath)}
+                  sx={{
+                    py: 1.5,
+                    '&.Mui-selected': { bgcolor: 'gray1', color: 'primary.main' },
+                  }}
+                >
+                  <ListItemText primary={item.label} />
+                </ListItemButton>
+              </ListItem>
+              <Collapse in={isGroupActive}>
+                <List disablePadding>
+                  {item.children.map((child) => (
+                    <ListItem key={child.label} disablePadding>
+                      <ListItemButton
+                        selected={pathname === child.path}
+                        onClick={() => handleNavigate(child.path)}
+                        sx={{
+                          py: 0.75, pl: 4,
+                          '&.Mui-selected': { bgcolor: 'gray1', color: 'primary.main' },
+                        }}
+                      >
+                        <ListItemText primary={child.label} primaryTypographyProps={{ fontSize: '0.8125rem' }} />
+                      </ListItemButton>
+                    </ListItem>
+                  ))}
+                </List>
+              </Collapse>
+            </Box>
+          );
+        }
+        return (
+          <ListItem
+            key={item.label}
+            disablePadding
+            sx={{ borderBottom: '1px solid', borderColor: 'gray2' }}
           >
-            <ListItemText primary={item.label} />
-          </ListItemButton>
-        </ListItem>
-      ))}
+            <ListItemButton
+              selected={pathname === item.path}
+              onClick={() => handleNavigate(item.path!)}
+              sx={{
+                py: 1.5,
+                '&.Mui-selected': { bgcolor: 'gray1', color: 'primary.main' },
+              }}
+            >
+              <ListItemText primary={item.label} />
+            </ListItemButton>
+          </ListItem>
+        );
+      })}
     </List>
   );
 
