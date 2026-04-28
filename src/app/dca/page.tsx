@@ -102,18 +102,13 @@ export default function DcaPage() {
       <PageHeader />
 
       <Stack spacing={3} sx={{ alignItems: 'center' }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2} width={1}>
-          <Box>
-            <Typography variant="h5" fontWeight={700}>적립식 매수 일지</Typography>
-            {/* <Typography variant="body2" color="gray5" sx={{ mt: 0.5 }}>
-              카드를 클릭하여 매수 일지를 작성하세요
-            </Typography> */}
-          </Box>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" width={1}>
+          <Typography variant="h5" fontWeight={700}>적립식 매수 일지</Typography>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => router.push('/dca/detail')}
-            sx={{ flexShrink: 0 }}
+            sx={{ display: { xs: 'none', sm: 'inline-flex' }, flexShrink: 0 }}
           >
             등록
           </Button>
@@ -284,7 +279,34 @@ export default function DcaPage() {
 
           </Box>
         )}
+        {/* 모바일 하단 고정 버튼 여백 */}
+        <Box sx={{ display: { xs: 'block', sm: 'none' }, height: 56 }} />
       </Stack>
+
+      {/* 모바일 하단 고정 등록 버튼 */}
+      <Box
+        sx={{
+          display: { xs: 'flex', sm: 'none' },
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          p: 2,
+          bgcolor: 'background.paper',
+          borderTop: '1px solid',
+          borderColor: 'gray2',
+          zIndex: 10,
+        }}
+      >
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => router.push('/dca/detail')}
+          fullWidth
+        >
+          등록
+        </Button>
+      </Box>
     </Container>
   );
 }
