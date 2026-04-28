@@ -9,7 +9,12 @@
       "Bash(curl -s \"https://ac.stock.naver.com/ac?q=kodex&target=stock\")",
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(i['code'], i['name']\\) for i in d.get\\('items',[]\\)]\")",
       "Bash(node -e \"const d=JSON.parse\\(require\\('fs'\\).readFileSync\\(0,'utf8'\\)\\);d.items?.forEach\\(i=>console.log\\(i.code,i.name\\)\\)\")",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "WebFetch(domain:www.38.co.kr)",
+      "Bash(pnpm add:*)",
+      "Bash(node -e ':*)",
+      "Bash(xargs grep:*)",
+      "Bash(ls -la /d/dev/study/my-stock/tmp/*.sql)"
     ]
   },
   "outputStyle": "Explanatory"

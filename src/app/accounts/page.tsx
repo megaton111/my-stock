@@ -226,7 +226,7 @@ function AccountSection({
 
   return (
     <Box>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} sx={{ mb: 1 }}>
         <Stack direction="row" alignItems="center" spacing={0.5}>
           {editing && (
             <Stack direction="row" spacing={0}>
@@ -238,24 +238,33 @@ function AccountSection({
               </IconButton>
             </Stack>
           )}
-          <Typography variant="body1" fontWeight={600}>
-            {account.accountName}
-            {account.accountNumber && (
-              <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 0.75 }}>
-                ({account.accountNumber})
-              </Typography>
-            )}
-          </Typography>
-          {memo && (
-            <Typography variant="caption" color="text.secondary">
-              · {memo}
+          
+          <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent={"flex-start"}>
+            <Typography variant="body1" fontWeight={600}>
+              {account.accountName}
+              {account.accountNumber && (
+                <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 0.75 }}>
+                  ({account.accountNumber})
+                </Typography>
+              )}
             </Typography>
-          )}
-          {!editing && (
-            <IconButton size="small" onClick={handleOpen}>
-              <EditNoteIcon sx={{ fontSize: 18 }} />
-            </IconButton>
-          )}
+            
+            <Stack direction={"row"} alignItems={"center"}>
+              {memo && (
+                <Typography variant="caption" color="text.secondary">
+                  · {memo}
+                </Typography>
+              )}
+
+              {!editing && (
+                <IconButton size="small" onClick={handleOpen}>
+                  <EditNoteIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              )}
+            </Stack>
+            
+          </Stack>
+
         </Stack>
         <Typography variant="body2" fontWeight={600} color={profitColor(account.totalProfit)}>
           {formatProfit(account.totalProfit)} ({formatRate(account.totalRate)})
