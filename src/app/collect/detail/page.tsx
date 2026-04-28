@@ -28,6 +28,9 @@ interface CollectEntry {
   date: string;
   amount: number;
   quantity: number;
+  broker?: string;
+  accountName?: string;
+  accountNumber?: string;
 }
 
 interface CollectRow extends CollectEntry {
@@ -122,6 +125,8 @@ function CollectDetailContent() {
   const [stockCategory, setStockCategory] = useState('미국주식');
   const [targetQuantity, setTargetQuantity] = useState('');
   const [broker, setBroker] = useState('');
+  const [accountName, setAccountName] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
   const [registered, setRegistered] = useState(false);
 
   const catConfig = getCategoryConfig(stockCategory);
@@ -132,6 +137,14 @@ function CollectDetailContent() {
   // 기존 종목 접근 시 DB에서 가져온 종목 정보
   const [fetchedStockName, setFetchedStockName] = useState('');
   const [fetchedTargetQuantity, setFetchedTargetQuantity] = useState(0);
+  const [fetchedBroker, setFetchedBroker] = useState('');
+  const [fetchedAccountName, setFetchedAccountName] = useState('');
+  const [fetchedAccountNumber, setFetchedAccountNumber] = useState('');
+  const [accountEditOpen, setAccountEditOpen] = useState(false);
+  const [accountEditBroker, setAccountEditBroker] = useState('');
+  const [accountEditName, setAccountEditName] = useState('');
+  const [accountEditNumber, setAccountEditNumber] = useState('');
+  const [accountSaving, setAccountSaving] = useState(false);
 
   // 통화 판별: 티커 suffix 기반
   const currency: 'USD' | 'KRW' = useMemo(() => {
@@ -166,6 +179,9 @@ function CollectDetailContent() {
       if (data.length > 0) {
         setFetchedStockName(data[0].stockName);
         setFetchedTargetQuantity(data[0].targetQuantity);
+        setFetchedBroker(data[0].broker || '');
+        setFetchedAccountName(data[0].accountName || '');
+        setFetchedAccountNumber(data[0].accountNumber || '');
       }
     } catch (err) {
       console.error('Failed to fetch entries:', err);
@@ -302,6 +318,8 @@ function CollectDetailContent() {
           amount,
           quantity,
           broker: broker || undefined,
+          accountName: accountName || undefined,
+          accountNumber: accountNumber || undefined,
         }),
       });
       if (!res.ok) {
@@ -548,11 +566,27 @@ function CollectDetailContent() {
                   <MenuItem key={b} value={b}>{b}</MenuItem>
                 ))}
               </TextField>
+              <Stack direction="row" spacing={1.5}>
+                <TextField
+                  label="계좌명"
+                  value={accountName}
+                  onChange={(e) => setAccountName(e.target.value)}
+                  fullWidth
+                  placeholder="예: ISA계좌"
+                />
+                <TextField
+                  label="계좌번호"
+                  value={accountNumber}
+                  onChange={(e) => setAccountNumber(e.target.value)}
+                  fullWidth
+                  placeholder="예: 123-456-789"
+                />
+              </Stack>
               <Box sx={{ display: 'flex', gap: 1.5, pt: 1 }}>
                 <Button
                   variant="contained"
                   onClick={handleRegister}
-                  disabled={!stockName.trim() || !stockTicker.trim() || !targetQuantity.trim()}
+                  disabled={!stockName.trim() || !stockTicker.trim() || !targetQuantity.trim() || !broker || !accountName.trim() || !accountNumber.trim()}
                 >
                   등록하고 매수 시작
                 </Button>
@@ -581,9 +615,40 @@ function CollectDetailContent() {
                   {ticker} · 목표수량 {displayTarget.toLocaleString()}주
                 </Typography>
               )}
-              <Typography variant="body2" color="gray5" sx={{ mt: 0.5 }}>
-                주식 모으기 일지
-              </Typography>
+              {!isNew && (fetchedBroker || fetchedAccountName || fetchedAccountNumber) ? (
+                <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mt: 0.5 }}>
+                  <Typography variant="body2" color="gray5">
+                    {[fetchedBroker, fetchedAccountName].filter(Boolean).join(' · ')}
+                    {fetchedAccountNumber && ` (${fetchedAccountNumber})`}
+                  </Typography>
+                  <IconButton
+                    size="small"
+                    onClick={() => {
+                      setAccountEditBroker(fetchedBroker);
+                      setAccountEditName(fetchedAccountName);
+                      setAccountEditNumber(fetchedAccountNumber);
+                      setAccountEditOpen(true);
+                    }}
+                    sx={{ color: 'gray5' }}
+                  >
+                    <EditIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Stack>
+              ) : !isNew ? (
+                <Button
+                  size="small"
+                  startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+                  onClick={() => {
+                    setAccountEditBroker('');
+                    setAccountEditName('');
+                    setAccountEditNumber('');
+                    setAccountEditOpen(true);
+                  }}
+                  sx={{ mt: 0.5, color: 'gray5', textTransform: 'none', fontSize: '0.8rem' }}
+                >
+                  계좌 정보 등록
+                </Button>
+              ) : null}
             </Box>
             {!isBusy && (
               <Stack direction="row" spacing={1} flexShrink={0}>
@@ -995,6 +1060,79 @@ function CollectDetailContent() {
         <DialogActions>
           <Button onClick={() => setDeleteOpen(false)}>취소</Button>
           <Button onClick={handleDeleteAll} color="error" variant="contained">종료</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={accountEditOpen} onClose={() => !accountSaving && setAccountEditOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>계좌 정보 수정</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              select
+              label="증권사"
+              value={accountEditBroker}
+              onChange={(e) => setAccountEditBroker(e.target.value)}
+              fullWidth
+            >
+              <MenuItem value="">선택안함</MenuItem>
+              {BROKERS.map((b) => (
+                <MenuItem key={b} value={b}>{b}</MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              label="계좌명"
+              value={accountEditName}
+              onChange={(e) => setAccountEditName(e.target.value)}
+              fullWidth
+              placeholder="예: ISA계좌"
+            />
+            <TextField
+              label="계좌번호"
+              value={accountEditNumber}
+              onChange={(e) => setAccountEditNumber(e.target.value)}
+              fullWidth
+              placeholder="예: 123-456-789"
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAccountEditOpen(false)} disabled={accountSaving}>취소</Button>
+          <Button
+            variant="contained"
+            disabled={accountSaving || (!accountEditBroker && !accountEditName && !accountEditNumber)}
+            onClick={async () => {
+              if (!user || !ticker) return;
+              setAccountSaving(true);
+              try {
+                const res = await fetch('/api/collect/account', {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    userId: user.id,
+                    ticker,
+                    broker: accountEditBroker,
+                    accountName: accountEditName,
+                    accountNumber: accountEditNumber,
+                  }),
+                });
+                if (res.ok) {
+                  setFetchedBroker(accountEditBroker);
+                  setFetchedAccountName(accountEditName);
+                  setFetchedAccountNumber(accountEditNumber);
+                  setAccountEditOpen(false);
+                } else {
+                  const err = await res.json();
+                  setSnackbar(err.error || '계좌 정보 수정에 실패했습니다.');
+                }
+              } catch {
+                setSnackbar('계좌 정보 수정에 실패했습니다.');
+              } finally {
+                setAccountSaving(false);
+              }
+            }}
+          >
+            {accountSaving ? '저장 중...' : '저장'}
+          </Button>
         </DialogActions>
       </Dialog>
 

@@ -19,6 +19,7 @@ interface MenuItem {
 const MENU_ITEMS: MenuItem[] = [
   { label: '대시보드', path: '/dashboard' },
   { label: '투자내역 관리', path: '/investments' },
+  { label: '계좌별 현황', path: '/accounts' },
   { label: '주식 모으기', path: '/collect' },
   { label: '적립식 매수', path: '/dca' },
   { label: 'MDD 분석', path: '/mdd' },

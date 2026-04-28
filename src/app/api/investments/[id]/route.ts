@@ -11,6 +11,8 @@ function toInvestment(row: Record<string, unknown>) {
     avgPrice: Number(row.avg_price),
     currency: row.currency,
     broker: row.broker || '',
+    accountName: row.account_name || '',
+    accountNumber: row.account_number || '',
     positionId: row.position_id != null ? Number(row.position_id) : undefined,
   };
 }
@@ -51,6 +53,8 @@ export async function PUT(
   if (body.avgPrice !== undefined) updates.avg_price = body.avgPrice;
   if (body.currency !== undefined) updates.currency = body.currency;
   if (body.broker !== undefined) updates.broker = body.broker || null;
+  if (body.accountName !== undefined) updates.account_name = body.accountName || null;
+  if (body.accountNumber !== undefined) updates.account_number = body.accountNumber || null;
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: '수정할 항목이 없습니다.' }, { status: 400 });

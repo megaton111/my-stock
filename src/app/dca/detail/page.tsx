@@ -184,6 +184,8 @@ function DcaDetailContent() {
   const [scheduleValue, setScheduleValue] = useState<number>(1);
   const [scheduleQuantity, setScheduleQuantity] = useState('');
   const [broker, setBroker] = useState('');
+  const [accountName, setAccountName] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
   const [registered, setRegistered] = useState(false);
 
   const catConfig = getCategoryConfig(stockCategory);
@@ -298,6 +300,8 @@ function DcaDetailContent() {
           scheduleValue,
           scheduleQuantity: scheduleQuantity ? Number(scheduleQuantity) : null,
           broker: broker || undefined,
+          accountName: accountName || undefined,
+          accountNumber: accountNumber || undefined,
         }),
       });
       if (!res.ok) {
@@ -392,6 +396,9 @@ function DcaDetailContent() {
           scheduleType: isNew ? scheduleType : undefined,
           scheduleValue: isNew ? scheduleValue : undefined,
           scheduleQuantity: isNew && scheduleQuantity ? Number(scheduleQuantity) : undefined,
+          broker: broker || undefined,
+          accountName: accountName || undefined,
+          accountNumber: accountNumber || undefined,
         }),
       });
       if (!res.ok) {
@@ -720,11 +727,27 @@ function DcaDetailContent() {
                   <MenuItem key={b} value={b}>{b}</MenuItem>
                 ))}
               </TextField>
+              <Stack direction="row" spacing={1.5}>
+                <TextField
+                  label="계좌명"
+                  value={accountName}
+                  onChange={(e) => setAccountName(e.target.value)}
+                  fullWidth
+                  placeholder="예: ISA계좌"
+                />
+                <TextField
+                  label="계좌번호"
+                  value={accountNumber}
+                  onChange={(e) => setAccountNumber(e.target.value)}
+                  fullWidth
+                  placeholder="예: 123-456-789"
+                />
+              </Stack>
               <Box sx={{ display: 'flex', gap: 1.5, pt: 1 }}>
                 <Button
                   variant="contained"
                   onClick={handleRegister}
-                  disabled={!stockName.trim() || !stockTicker.trim() || !targetQuantity.trim()}
+                  disabled={!stockName.trim() || !stockTicker.trim() || !targetQuantity.trim() || !broker || !accountName.trim() || !accountNumber.trim()}
                 >
                   등록하고 매수 시작
                 </Button>

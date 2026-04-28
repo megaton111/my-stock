@@ -13,6 +13,8 @@ export interface Investment {
   avgPrice: number;
   currency: 'USD' | 'KRW';
   broker?: string;
+  accountName?: string;
+  accountNumber?: string;
   positionId?: number;
   sources?: SourceBreakdown;
 }

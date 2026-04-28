@@ -10,6 +10,9 @@ function toEntry(row: Record<string, unknown>) {
     date: row.purchase_date,
     amount: Number(row.amount),
     quantity: Number(row.quantity),
+    broker: row.broker || '',
+    accountName: row.account_name || '',
+    accountNumber: row.account_number || '',
   };
 }
 

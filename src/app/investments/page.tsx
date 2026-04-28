@@ -375,14 +375,26 @@ export default function InvestmentsPage() {
                       })()}
                     </TableCell>
                   </TableRow>
-                  {expanded && item.positionId && (
+                  {expanded && (item.positionId || item.accountName || item.broker) && (
                     <TableRow>
                       <TableCell colSpan={COLUMNS.length} sx={{ p: 0, bgcolor: 'gray1' }}>
-                        <PositionHistory
-                          positionId={item.positionId}
-                          refreshKey={positionRefreshKey}
-                          onEditBuy={(tx) => openEditBuy(item, tx)}
-                        />
+                        {(item.broker || item.accountName || item.accountNumber) && (
+                          <Box sx={{ px: 2, pt: 1.5, pb: item.positionId ? 0 : 1.5 }}>
+                            <Typography variant="caption" color="text.secondary">
+                              {item.broker && <Typography component="span" variant="caption" fontWeight={600}>{item.broker}</Typography>}
+                              {item.broker && (item.accountName || item.accountNumber) && ' · '}
+                              {item.accountName || (item.accountNumber ? '기본계좌' : '')}
+                              {item.accountNumber && ` (${item.accountNumber})`}
+                            </Typography>
+                          </Box>
+                        )}
+                        {item.positionId && (
+                          <PositionHistory
+                            positionId={item.positionId}
+                            refreshKey={positionRefreshKey}
+                            onEditBuy={(tx) => openEditBuy(item, tx)}
+                          />
+                        )}
                       </TableCell>
                     </TableRow>
                   )}
@@ -492,13 +504,25 @@ export default function InvestmentsPage() {
                           <Typography sx={{ fontSize: '0.75rem', fontWeight: 600 }}>{formatCurrency(totalAmount, 'KRW')}</Typography>
                         </Stack>
                       </Stack>
-                      {expanded && item.positionId && (
+                      {expanded && (item.positionId || item.accountName || item.broker) && (
                         <Box sx={{ mx: -1.5, mb: -1, mt: 0.5 }} onClick={stopPropagation}>
-                          <PositionHistory
-                            positionId={item.positionId}
-                            refreshKey={positionRefreshKey}
-                            onEditBuy={(tx) => openEditBuy(item, tx)}
-                          />
+                          {(item.broker || item.accountName || item.accountNumber) && (
+                            <Box sx={{ px: 1.5, pt: 1, pb: item.positionId ? 0 : 1 }}>
+                              <Typography variant="caption" color="text.secondary">
+                                {item.broker && <Typography component="span" variant="caption" fontWeight={600}>{item.broker}</Typography>}
+                                {item.broker && (item.accountName || item.accountNumber) && ' · '}
+                                {item.accountName || (item.accountNumber ? '기본계좌' : '')}
+                                {item.accountNumber && ` (${item.accountNumber})`}
+                              </Typography>
+                            </Box>
+                          )}
+                          {item.positionId && (
+                            <PositionHistory
+                              positionId={item.positionId}
+                              refreshKey={positionRefreshKey}
+                              onEditBuy={(tx) => openEditBuy(item, tx)}
+                            />
+                          )}
                         </Box>
                       )}
                     </Stack>

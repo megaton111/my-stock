@@ -39,6 +39,8 @@ const emptyForm: InvestmentInput = {
   avgPrice: 0,
   currency: 'USD',
   broker: '',
+  accountName: '',
+  accountNumber: '',
 };
 
 function getCategoryConfig(category: string) {
@@ -61,6 +63,8 @@ export default function InvestmentFormDialog({ open, onClose, onSubmit, initial 
         avgPrice: initial.avgPrice,
         currency: initial.currency,
         broker: initial.broker || '',
+        accountName: initial.accountName || '',
+        accountNumber: initial.accountNumber || '',
       } : emptyForm);
     }
   }, [open, initial]);
@@ -125,8 +129,8 @@ export default function InvestmentFormDialog({ open, onClose, onSubmit, initial 
 
   const config = getCategoryConfig(form.category);
   const isValid = isCash
-    ? !!form.name && form.quantity > 0
-    : !!form.name && !!form.ticker && form.quantity > 0 && form.avgPrice > 0;
+    ? !!form.name && form.quantity > 0 && !!form.broker && !!form.accountName && !!form.accountNumber
+    : !!form.name && !!form.ticker && form.quantity > 0 && form.avgPrice > 0 && !!form.broker && !!form.accountName && !!form.accountNumber;
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -229,6 +233,25 @@ export default function InvestmentFormDialog({ open, onClose, onSubmit, initial 
               <MenuItem key={b} value={b}>{b}</MenuItem>
             ))}
           </TextField>
+
+          <Stack direction="row" spacing={2}>
+            <TextField
+              label="계좌명"
+              value={form.accountName || ''}
+              onChange={(e) => handleChange('accountName', e.target.value)}
+              size="small"
+              fullWidth
+              placeholder="예: ISA계좌"
+            />
+            <TextField
+              label="계좌번호"
+              value={form.accountNumber || ''}
+              onChange={(e) => handleChange('accountNumber', e.target.value)}
+              size="small"
+              fullWidth
+              placeholder="예: 123-456-789"
+            />
+          </Stack>
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2.5 }}>

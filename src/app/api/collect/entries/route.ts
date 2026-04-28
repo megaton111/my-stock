@@ -11,6 +11,8 @@ function toEntry(row: Record<string, unknown>) {
     amount: Number(row.amount),
     quantity: Number(row.quantity),
     broker: row.broker || '',
+    accountName: row.account_name || '',
+    accountNumber: row.account_number || '',
   };
 }
 
@@ -41,7 +43,7 @@ export async function GET(request: NextRequest) {
 // POST /api/collect/entries → 매수 기록 추가
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { userId, stockName, ticker, targetQuantity, date, amount, quantity, broker } = body;
+  const { userId, stockName, ticker, targetQuantity, date, amount, quantity, broker, accountName, accountNumber } = body;
 
   if (!userId || !stockName || !ticker || !date || amount == null || quantity == null) {
     return NextResponse.json({ error: '필수 항목이 누락되었습니다.' }, { status: 400 });
@@ -58,6 +60,8 @@ export async function POST(request: NextRequest) {
       amount,
       quantity,
       broker: broker || null,
+      account_name: accountName || null,
+      account_number: accountNumber || null,
     })
     .select()
     .single();

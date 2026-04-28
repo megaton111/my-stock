@@ -16,6 +16,8 @@ interface MergedItem {
   avgPrice: number;
   currency: string;
   broker: string;
+  accountName: string;
+  accountNumber: string;
   positionId?: number;
   sources: SourceBreakdown;
 }
@@ -30,6 +32,8 @@ function toInvestment(row: Record<string, unknown>): MergedItem {
     avgPrice: Number(row.avg_price),
     currency: String(row.currency),
     broker: row.broker ? String(row.broker) : '',
+    accountName: row.account_name ? String(row.account_name) : '',
+    accountNumber: row.account_number ? String(row.account_number) : '',
     positionId: row.position_id != null ? Number(row.position_id) : undefined,
     sources: { investments: Number(row.quantity) },
   };
@@ -70,6 +74,8 @@ function mergeEntries(
       existing.sources[source] = totalQty;
       // broker가 비어있으면 entries의 broker로 채움
       if (!existing.broker && row.broker) existing.broker = String(row.broker);
+      if (!existing.accountName && row.account_name) existing.accountName = String(row.account_name);
+      if (!existing.accountNumber && row.account_number) existing.accountNumber = String(row.account_number);
     } else {
       map.set(ticker, {
         id: `${source}-${ticker}`,
@@ -80,6 +86,8 @@ function mergeEntries(
         avgPrice: totalAmount / totalQty,
         currency: inferCurrency(ticker),
         broker: row.broker ? String(row.broker) : '',
+        accountName: row.account_name ? String(row.account_name) : '',
+        accountNumber: row.account_number ? String(row.account_number) : '',
         sources: { [source]: totalQty },
       });
     }
@@ -103,11 +111,11 @@ export async function GET(request: NextRequest) {
       .order('id'),
     supabase
       .from('collect_entries')
-      .select('stock_name, ticker, amount, quantity, broker')
+      .select('stock_name, ticker, amount, quantity, broker, account_name, account_number')
       .eq('user_id', userId),
     supabase
       .from('dca_entries')
-      .select('stock_name, ticker, amount, quantity, broker')
+      .select('stock_name, ticker, amount, quantity, broker, account_name, account_number')
       .eq('user_id', userId),
   ]);
 
@@ -141,7 +149,7 @@ export async function GET(request: NextRequest) {
 
 /** 개별 엔트리 배열을 ticker별로 그룹핑하여 SUM(amount), SUM(quantity) 집계 */
 function aggregateByTicker(rows: Record<string, unknown>[]) {
-  const agg = new Map<string, { stock_name: string; ticker: string; total_amount: number; total_quantity: number; broker: string }>();
+  const agg = new Map<string, { stock_name: string; ticker: string; total_amount: number; total_quantity: number; broker: string; account_name: string; account_number: string }>();
 
   for (const row of rows) {
     const ticker = String(row.ticker);
@@ -150,6 +158,8 @@ function aggregateByTicker(rows: Record<string, unknown>[]) {
       existing.total_amount += Number(row.amount);
       existing.total_quantity += Number(row.quantity);
       if (!existing.broker && row.broker) existing.broker = String(row.broker);
+      if (!existing.account_name && row.account_name) existing.account_name = String(row.account_name);
+      if (!existing.account_number && row.account_number) existing.account_number = String(row.account_number);
     } else {
       agg.set(ticker, {
         stock_name: String(row.stock_name),
@@ -157,6 +167,8 @@ function aggregateByTicker(rows: Record<string, unknown>[]) {
         total_amount: Number(row.amount),
         total_quantity: Number(row.quantity),
         broker: row.broker ? String(row.broker) : '',
+        account_name: row.account_name ? String(row.account_name) : '',
+        account_number: row.account_number ? String(row.account_number) : '',
       });
     }
   }
@@ -230,6 +242,8 @@ export async function POST(request: NextRequest) {
       avg_price: body.avgPrice,
       currency: body.currency,
       broker,
+      account_name: body.accountName || null,
+      account_number: body.accountNumber || null,
       position_id: position.id,
     })
     .select()
