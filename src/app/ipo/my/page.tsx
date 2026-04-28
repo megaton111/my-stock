@@ -22,9 +22,10 @@ interface FormState {
   sellPrice: string;
   sellDate: string;
   fee: string;
+  broker: string;
 }
 
-const EMPTY_FORM: FormState = { stockName: '', ipoPrice: '', allocatedQuantity: '', sellPrice: '', sellDate: '', fee: '' };
+const EMPTY_FORM: FormState = { stockName: '', ipoPrice: '', allocatedQuantity: '', sellPrice: '', sellDate: '', fee: '', broker: '' };
 
 function toForm(entry: MyIpoEntry): FormState {
   return {
@@ -34,6 +35,7 @@ function toForm(entry: MyIpoEntry): FormState {
     sellPrice: entry.sellPrice != null ? String(entry.sellPrice) : '',
     sellDate: entry.sellDate || '',
     fee: entry.fee ? String(entry.fee) : '',
+    broker: entry.broker || '',
   };
 }
 
@@ -79,6 +81,7 @@ export default function MyIpoPage() {
       sellPrice: form.sellPrice ? Number(form.sellPrice) : null,
       sellDate: form.sellDate || null,
       fee: form.fee ? Number(form.fee) : 0,
+      broker: form.broker || null,
     };
 
     if (editingId) {
@@ -226,6 +229,7 @@ export default function MyIpoPage() {
             <TextField label="종목명" value={form.stockName} onChange={handleChange('stockName')} fullWidth size="small" />
             <TextField label="공모가 (원)" value={form.ipoPrice} onChange={handleChange('ipoPrice')} fullWidth size="small" type="number" />
             <TextField label="배정수량 (주)" value={form.allocatedQuantity} onChange={handleChange('allocatedQuantity')} fullWidth size="small" type="number" />
+            <TextField label="증권사" value={form.broker} onChange={handleChange('broker')} fullWidth size="small" placeholder="예: 한국투자증권" />
             <TextField label="매도가 (원)" value={form.sellPrice} onChange={handleChange('sellPrice')} fullWidth size="small" type="number" />
             <TextField label="매도일" value={form.sellDate} onChange={handleChange('sellDate')} fullWidth size="small" type="date" slotProps={{ inputLabel: { shrink: true } }} />
             <TextField label="수수료 (원)" value={form.fee} onChange={handleChange('fee')} fullWidth size="small" type="number" />

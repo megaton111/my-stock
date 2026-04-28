@@ -20,6 +20,7 @@ import DividendWidget from '@/components/DividendWidget';
 import ProgressWidget from '@/components/ProgressWidget';
 import RealizedPlWidget from '@/components/RealizedPlWidget';
 import IpoProfitWidget from '@/components/IpoProfitWidget';
+import IpoListingAlert from '@/components/IpoListingAlert';
 import PageHeader from '@/components/PageHeader';
 import { useRouter } from 'next/navigation';
 
@@ -142,6 +143,8 @@ export default function DashboardPage() {
   return (
     <Container maxWidth="md" sx={{ py: 10, position: 'relative' }}>
       <PageHeader />
+      <IpoListingAlert />
+
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
         {/* SummaryCards */}
         {dataLoading ? <SummarySkeleton /> : <SummaryCards {...summary} />}

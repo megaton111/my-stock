@@ -12,7 +12,7 @@ import PageHeader from '@/components/PageHeader';
 import { useIpoSchedules } from '@/hooks/useIpoSchedules';
 import { IpoSchedule } from '@/types/ipo';
 
-type IpoStatus = '청약예정' | '청약중' | '청약완료' | '상장완료';
+type IpoStatus = '청약예정' | '청약중' | '청약마감' | '상장완료';
 
 function parseDate(dateStr: string | null): Date | null {
   if (!dateStr) return null;
@@ -49,7 +49,7 @@ function getIpoStatus(item: IpoSchedule): IpoStatus {
   if (start && end) {
     if (now < start) return '청약예정';
     if (now <= end) return '청약중';
-    return '청약완료';
+    return '청약마감';
   }
 
   return '청약예정';
@@ -58,7 +58,7 @@ function getIpoStatus(item: IpoSchedule): IpoStatus {
 const STATUS_COLOR: Record<IpoStatus, 'default' | 'warning' | 'success' | 'info'> = {
   '청약예정': 'info',
   '청약중': 'warning',
-  '청약완료': 'default',
+  '청약마감': 'default',
   '상장완료': 'success',
 };
 
@@ -204,7 +204,7 @@ export default function IpoPage() {
         size="small"
         sx={{ mb: 2, flexWrap: 'wrap', '& .MuiToggleButton-root': { fontSize: '0.75rem', px: 1.5, py: 0.5 } }}
       >
-        {(['전체', '청약예정', '청약중', '청약완료', '상장완료'] as const).map((label) => (
+        {(['전체', '청약예정', '청약중', '청약마감', '상장완료'] as const).map((label) => (
           <ToggleButton key={label} value={label}>{label}</ToggleButton>
         ))}
       </ToggleButtonGroup>

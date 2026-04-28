@@ -15,6 +15,8 @@ function toEntry(row: Record<string, unknown>) {
     sellDate: row.sell_date || null,
     fee,
     profit: sellPrice != null ? (sellPrice - ipoPrice) * qty - fee : 0,
+    broker: (row.broker as string) || null,
+    listingDate: null,
   };
 }
 
@@ -24,7 +26,7 @@ export async function PUT(
 ) {
   const { id } = await params;
   const body = await request.json();
-  const { stockName, ipoPrice, allocatedQuantity, sellPrice, sellDate, fee } = body;
+  const { stockName, ipoPrice, allocatedQuantity, sellPrice, sellDate, fee, broker } = body;
 
   if (!stockName || ipoPrice == null || allocatedQuantity == null) {
     return NextResponse.json({ error: '필수 항목이 누락되었습니다.' }, { status: 400 });
@@ -39,6 +41,7 @@ export async function PUT(
       sell_price: sellPrice ?? null,
       sell_date: sellDate ?? null,
       fee: fee ?? 0,
+      broker: broker ?? null,
     })
     .eq('id', id)
     .select()

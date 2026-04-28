@@ -29,4 +29,6 @@ export interface MyIpoEntry {
   sellDate: string | null;
   fee: number;
   profit: number;
+  broker: string | null;
+  listingDate: string | null;
 }
