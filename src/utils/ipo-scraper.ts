@@ -134,13 +134,37 @@ export async function scrapeIpoDetail(externalId: number): Promise<IpoDetail> {
   };
 }
 
+export async function scrapeListOnly(pages = 1): Promise<IpoListItem[]> {
+  const allItems: IpoListItem[] = [];
+  for (let page = 1; page <= pages; page++) {
+    const items = await scrapeIpoList(page);
+    allItems.push(...items);
+    if (page < pages) await delay(300);
+  }
+  return allItems;
+}
+
+export async function scrapeDetailsForIds(externalIds: number[]): Promise<Map<number, IpoDetail>> {
+  const results = new Map<number, IpoDetail>();
+  for (const id of externalIds) {
+    try {
+      const detail = await scrapeIpoDetail(id);
+      results.set(id, detail);
+      await delay(200);
+    } catch {
+      // skip failed items
+    }
+  }
+  return results;
+}
+
 export async function scrapeAll(pages = 2): Promise<IpoScrapedData[]> {
   const allItems: IpoListItem[] = [];
 
   for (let page = 1; page <= pages; page++) {
     const items = await scrapeIpoList(page);
     allItems.push(...items);
-    if (page < pages) await delay(500);
+    if (page < pages) await delay(300);
   }
 
   const results: IpoScrapedData[] = [];
@@ -149,7 +173,7 @@ export async function scrapeAll(pages = 2): Promise<IpoScrapedData[]> {
     try {
       const detail = await scrapeIpoDetail(item.externalId);
       results.push({ ...item, ...detail });
-      await delay(300);
+      await delay(200);
     } catch {
       results.push({
         ...item,
