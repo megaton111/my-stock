@@ -106,10 +106,15 @@ function buildLabelMap($: cheerio.CheerioAPI): Map<string, string> {
   return map;
 }
 
+function isPlaceholder(val: string): boolean {
+  const v = val.replace(/\s/g, '');
+  return !v || v === '-' || v === '-원' || v === '0.00%' || v === '0:1';
+}
+
 function getFromMap(map: Map<string, string>, ...keys: string[]): string | null {
   for (const key of keys) {
     const val = map.get(key);
-    if (val && val !== '-') return val;
+    if (val && !isPlaceholder(val)) return val;
   }
   return null;
 }

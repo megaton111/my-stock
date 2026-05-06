@@ -43,12 +43,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: `목록 저장 실패: ${upsertError.message}` }, { status: 500 });
     }
 
-    // 2단계: 상세 정보가 비어있는 종목만 조회
+    // 2단계: 상세 정보가 비어있거나 플레이스홀더인 종목만 조회
     const { data: incomplete, error: queryError } = await supabase
       .from('ipo_schedules')
-      .select('external_id')
-      .is('confirmed_price', null)
-      .in('external_id', uniqueItems.map((i) => i.externalId));
+      .select('external_id, confirmed_price')
+      .in('external_id', uniqueItems.map((i) => i.externalId))
+      .or('confirmed_price.is.null,confirmed_price.eq.- 원,confirmed_price.eq.-');
 
     if (queryError) {
       return NextResponse.json({ error: `조회 실패: ${queryError.message}` }, { status: 500 });
