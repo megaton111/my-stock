@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import supabase from '@/lib/supabase';
 import { scrapeListOnly, scrapeDetailsForIds } from '@/utils/ipo-scraper';
 
+export const maxDuration = 30;
+
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -33,16 +35,24 @@ export async function GET(request: NextRequest) {
       updated_at: new Date().toISOString(),
     }));
 
-    await supabase
+    const { error: upsertError } = await supabase
       .from('ipo_schedules')
       .upsert(listRows, { onConflict: 'external_id', ignoreDuplicates: false });
 
+    if (upsertError) {
+      return NextResponse.json({ error: `목록 저장 실패: ${upsertError.message}` }, { status: 500 });
+    }
+
     // 2단계: 상세 정보가 비어있는 종목만 조회
-    const { data: incomplete } = await supabase
+    const { data: incomplete, error: queryError } = await supabase
       .from('ipo_schedules')
       .select('external_id')
       .is('confirmed_price', null)
       .in('external_id', uniqueItems.map((i) => i.externalId));
+
+    if (queryError) {
+      return NextResponse.json({ error: `조회 실패: ${queryError.message}` }, { status: 500 });
+    }
 
     const idsToFetch = (incomplete ?? []).map((row) => row.external_id);
 
@@ -80,8 +90,10 @@ export async function GET(request: NextRequest) {
       details_updated: detailCount,
     });
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack : undefined;
     return NextResponse.json(
-      { error: `크롤링 실패: ${err instanceof Error ? err.message : String(err)}` },
+      { error: `크롤링 실패: ${message}`, stack },
       { status: 500 },
     );
   }
