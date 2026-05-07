@@ -60,6 +60,20 @@ export async function PUT(
     return NextResponse.json({ error: '수정할 항목이 없습니다.' }, { status: 400 });
   }
 
+  // 계좌 정보 변경 시 account_sort_orders, account_memos도 함께 업데이트
+  const accountFieldChanged =
+    'broker' in updates || 'account_name' in updates || 'account_number' in updates;
+
+  let oldRow: Record<string, unknown> | null = null;
+  if (accountFieldChanged) {
+    const { data: current } = await supabase
+      .from('investments')
+      .select('user_id, broker, account_name, account_number')
+      .eq('id', id)
+      .single();
+    oldRow = current;
+  }
+
   const { data, error } = await supabase
     .from('investments')
     .update(updates)
@@ -69,6 +83,59 @@ export async function PUT(
 
   if (error || !data) {
     return NextResponse.json({ error: '종목을 찾을 수 없습니다.' }, { status: 404 });
+  }
+
+  // 계좌 정보가 바뀌었으면 sort_orders, memos 키도 이전
+  if (accountFieldChanged && oldRow) {
+    const oldBroker = oldRow.broker || '';
+    const oldAccName = oldRow.account_name || '';
+    const oldAccNum = oldRow.account_number || '';
+    const newBroker = data.broker || '';
+    const newAccName = data.account_name || '';
+    const newAccNum = data.account_number || '';
+    const userId = oldRow.user_id as string;
+
+    const keyChanged =
+      oldBroker !== newBroker || oldAccName !== newAccName || oldAccNum !== newAccNum;
+
+    if (keyChanged && userId) {
+      // 이전 키로 된 항목이 아직 다른 종목에서 쓰이는지 확인
+      const { count } = await supabase
+        .from('investments')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('broker', oldBroker || null)
+        .eq('account_name', oldAccName || null)
+        .eq('account_number', oldAccNum || null)
+        .neq('id', id);
+
+      // 이전 계좌를 쓰는 다른 종목이 없으면 키를 이전
+      if (count === 0) {
+        await supabase
+          .from('account_sort_orders')
+          .update({
+            broker: newBroker || '',
+            account_name: newAccName || '',
+            account_number: newAccNum || '',
+          })
+          .eq('user_id', userId)
+          .eq('broker', oldBroker || '')
+          .eq('account_name', oldAccName || '')
+          .eq('account_number', oldAccNum || '');
+
+        await supabase
+          .from('account_memos')
+          .update({
+            broker: newBroker || '',
+            account_name: newAccName || '',
+            account_number: newAccNum || '',
+          })
+          .eq('user_id', userId)
+          .eq('broker', oldBroker || '')
+          .eq('account_name', oldAccName || '')
+          .eq('account_number', oldAccNum || '');
+      }
+    }
   }
 
   return NextResponse.json(toInvestment(data));
