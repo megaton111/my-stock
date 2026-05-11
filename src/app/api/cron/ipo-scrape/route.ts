@@ -3,6 +3,7 @@ import supabase from '@/lib/supabase';
 import { scrapeListOnly, scrapeDetailsForIds } from '@/utils/ipo-scraper';
 
 export const maxDuration = 30;
+export const preferredRegion = 'icn1';
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
