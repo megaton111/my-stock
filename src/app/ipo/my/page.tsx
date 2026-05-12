@@ -141,9 +141,9 @@ export default function MyIpoPage() {
       </Paper>
 
       {entries.length === 0 ? (
-        <Paper sx={{ p: 4, textAlign: 'center' }}>
-          <Typography color="text.secondary">등록된 공모주가 없습니다.</Typography>
-        </Paper>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 200 }}>
+          <Typography color="text.secondary">참여한 공모주가 없습니다.</Typography>
+        </Box>
       ) : (
         <>
           {/* 모바일: 카드 */}

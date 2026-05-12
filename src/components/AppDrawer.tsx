@@ -26,8 +26,8 @@ const MENU_ITEMS: MenuItem[] = [
   {
     label: '공모주',
     children: [
-      { label: '일정', path: '/ipo' },
       { label: '나의 공모주', path: '/ipo/my' },
+      { label: '일정', path: '/ipo' },
     ],
   },
   { label: '주식정보', path: '/market' },
