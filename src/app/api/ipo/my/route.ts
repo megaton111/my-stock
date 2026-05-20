@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
   }
 
   const entries = data ?? [];
-  const stockNames = entries.map((r: Record<string, unknown>) => r.stock_name as string);
+  const stockNames = entries.map((r: Record<string, unknown>) => (r.stock_name as string).trim());
   const { data: schedules } = await supabase
     .from('ipo_schedules')
     .select('stock_name, listing_date')
@@ -45,11 +45,15 @@ export async function GET(request: NextRequest) {
 
   const listingMap = new Map<string, string>();
   (schedules ?? []).forEach((s: Record<string, unknown>) => {
-    if (s.listing_date) listingMap.set(s.stock_name as string, s.listing_date as string);
+    if (s.listing_date) {
+      const raw = s.listing_date as string;
+      const normalized = raw.includes('.') ? raw.replace(/\./g, '-') : raw;
+      listingMap.set((s.stock_name as string).trim(), normalized);
+    }
   });
 
   return NextResponse.json(
-    entries.map((r: Record<string, unknown>) => toEntry(r, listingMap.get(r.stock_name as string))),
+    entries.map((r: Record<string, unknown>) => toEntry(r, listingMap.get((r.stock_name as string).trim()))),
   );
 }
 
