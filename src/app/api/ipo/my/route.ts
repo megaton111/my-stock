@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const { userId, stockName, ipoPrice, allocatedQuantity, sellPrice, sellDate, fee, broker } = body;
 
-  if (!userId || !stockName || ipoPrice == null || allocatedQuantity == null) {
+  if (!userId || !stockName || ipoPrice == null) {
     return NextResponse.json({ error: '필수 항목이 누락되었습니다.' }, { status: 400 });
   }
 
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
       user_id: userId,
       stock_name: stockName,
       ipo_price: ipoPrice,
-      allocated_quantity: allocatedQuantity,
+      allocated_quantity: allocatedQuantity ?? 0,
       sell_price: sellPrice ?? null,
       sell_date: sellDate ?? null,
       fee: fee ?? 0,

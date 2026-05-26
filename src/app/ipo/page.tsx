@@ -4,12 +4,14 @@ import { useState } from 'react';
 import {
   Container, Box, Typography, Paper, Stack, CircularProgress, Chip,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Dialog, DialogTitle, DialogContent, IconButton, Divider,
-  ToggleButton, ToggleButtonGroup,
+  Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Divider,
+  ToggleButton, ToggleButtonGroup, Button, TextField,
+  FormControl, InputLabel, Select, MenuItem,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import PageHeader from '@/components/PageHeader';
 import { useIpoSchedules } from '@/hooks/useIpoSchedules';
+import { useUser } from '@/hooks/useUser';
 import { IpoSchedule } from '@/types/ipo';
 
 type IpoStatus = '청약예정' | '청약중' | '청약마감' | '상장완료';
@@ -133,7 +135,7 @@ function IpoDetailDialog({ item, open, onClose }: { item: IpoSchedule | null; op
   );
 }
 
-function IpoCard({ item, onClick }: { item: IpoSchedule; onClick: () => void }) {
+function IpoCard({ item, onClick, onJoin }: { item: IpoSchedule; onClick: () => void; onJoin?: () => void }) {
   const status = getIpoStatus(item);
   return (
     <Paper
@@ -147,7 +149,18 @@ function IpoCard({ item, onClick }: { item: IpoSchedule; onClick: () => void }) 
     >
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
         <Typography variant="subtitle2" fontWeight={600}>{item.stock_name}</Typography>
-        <Chip label={status} color={STATUS_COLOR[status]} size="small" sx={{ fontSize: '0.6875rem' }} />
+        <Stack direction="row" spacing={0.5} alignItems="center">
+          {status === '청약중' && onJoin && (
+            <Button
+              size="small" variant="contained" color="warning"
+              onClick={(e) => { e.stopPropagation(); onJoin(); }}
+              sx={{ fontSize: '0.6875rem', minWidth: 'auto', px: 1, py: 0.25 }}
+            >
+              참여
+            </Button>
+          )}
+          <Chip label={status} color={STATUS_COLOR[status]} size="small" sx={{ fontSize: '0.6875rem' }} />
+        </Stack>
       </Stack>
       <Stack spacing={0.25}>
         <Typography variant="caption" color="text.secondary">
@@ -171,10 +184,60 @@ function IpoCard({ item, onClick }: { item: IpoSchedule; onClick: () => void }) 
   );
 }
 
+const BROKERS = [
+  '한국투자증권', '미래에셋증권', '삼성증권', 'NH투자증권', 'KB증권',
+  '키움증권', '신한투자증권', '대신증권', '하나증권', '토스증권',
+  '카카오페이증권', 'IBK투자증권', '유안타증권', 'DB금융투자', '한화투자증권',
+  '교보증권', '현대차증권', 'SK증권', '부국증권', '이베스트투자증권',
+];
+
+interface JoinFormState {
+  stockName: string;
+  ipoPrice: string;
+  allocatedQuantity: string;
+  broker: string;
+}
+
 export default function IpoPage() {
   const { items, loading } = useIpoSchedules();
+  const { user } = useUser();
   const [selected, setSelected] = useState<IpoSchedule | null>(null);
   const [statusFilter, setStatusFilter] = useState<IpoStatus | '전체'>('전체');
+  const [joinDialogOpen, setJoinDialogOpen] = useState(false);
+  const [joinForm, setJoinForm] = useState<JoinFormState>({ stockName: '', ipoPrice: '', allocatedQuantity: '', broker: '' });
+  const [joinSaving, setJoinSaving] = useState(false);
+
+  const handleJoinOpen = (item: IpoSchedule) => {
+    const price = item.confirmed_price || item.offering_price || '';
+    const numericPrice = price.replace(/[^0-9]/g, '');
+    setJoinForm({ stockName: item.stock_name, ipoPrice: numericPrice, allocatedQuantity: '', broker: '' });
+    setJoinDialogOpen(true);
+  };
+
+  const handleJoinClose = () => {
+    setJoinDialogOpen(false);
+  };
+
+  const handleJoinSubmit = async () => {
+    if (!user || !joinForm.stockName || !joinForm.ipoPrice) return;
+    setJoinSaving(true);
+    await fetch('/api/ipo/my', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: user.id,
+        stockName: joinForm.stockName,
+        ipoPrice: Number(joinForm.ipoPrice),
+        allocatedQuantity: joinForm.allocatedQuantity ? Number(joinForm.allocatedQuantity) : 0,
+        sellPrice: null,
+        sellDate: null,
+        fee: 0,
+        broker: joinForm.broker || null,
+      }),
+    });
+    setJoinSaving(false);
+    setJoinDialogOpen(false);
+  };
 
   const filteredItems = statusFilter === '전체'
     ? items
@@ -220,7 +283,7 @@ export default function IpoPage() {
           {/* 모바일: 카드 */}
           <Stack spacing={1.5} sx={{ display: { xs: 'flex', md: 'none' } }}>
             {filteredItems.map((item) => (
-              <IpoCard key={item.id} item={item} onClick={() => setSelected(item)} />
+              <IpoCard key={item.id} item={item} onClick={() => setSelected(item)} onJoin={() => handleJoinOpen(item)} />
             ))}
           </Stack>
 
@@ -235,6 +298,7 @@ export default function IpoPage() {
                   <TableCell sx={{ fontSize: '0.8125rem', width: 130, whiteSpace: 'nowrap' }} align="right">공모가</TableCell>
                   <TableCell sx={{ fontSize: '0.8125rem', width: 110, whiteSpace: 'nowrap' }} align="right">기관경쟁률</TableCell>
                   <TableCell sx={{ fontSize: '0.8125rem', width: 110, whiteSpace: 'nowrap' }} align="right">의무보유확약</TableCell>
+                  <TableCell sx={{ width: 60 }} />
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -265,6 +329,17 @@ export default function IpoPage() {
                       <TableCell sx={{ fontSize: '0.8125rem' }} align="right">
                         {item.lock_up_rate || '-'}
                       </TableCell>
+                      <TableCell>
+                        {status === '청약중' && (
+                          <Button
+                            size="small" variant="contained" color="warning"
+                            onClick={(e) => { e.stopPropagation(); handleJoinOpen(item); }}
+                            sx={{ fontSize: '0.6875rem', minWidth: 'auto', px: 1, py: 0.25 }}
+                          >
+                            참여
+                          </Button>
+                        )}
+                      </TableCell>
                     </TableRow>
                   );
                 })}
@@ -279,6 +354,46 @@ export default function IpoPage() {
         open={!!selected}
         onClose={() => setSelected(null)}
       />
+
+      {/* 참여 등록 다이얼로그 */}
+      <Dialog open={joinDialogOpen} onClose={handleJoinClose} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ pr: 6 }}>
+          공모주 참여 등록
+          <IconButton onClick={handleJoinClose} sx={{ position: 'absolute', right: 8, top: 8 }}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField label="종목명" value={joinForm.stockName} fullWidth size="small" slotProps={{ input: { readOnly: true } }} />
+            <TextField label="공모가 (원)" value={joinForm.ipoPrice} fullWidth size="small" slotProps={{ input: { readOnly: true } }} />
+            <TextField
+              label="배정수량 (주)"
+              value={joinForm.allocatedQuantity}
+              onChange={(e) => setJoinForm((prev) => ({ ...prev, allocatedQuantity: e.target.value }))}
+              fullWidth size="small" type="number"
+              placeholder="배정 후 입력"
+            />
+            <FormControl fullWidth size="small">
+              <InputLabel>증권사</InputLabel>
+              <Select
+                value={joinForm.broker}
+                label="증권사"
+                onChange={(e) => setJoinForm((prev) => ({ ...prev, broker: e.target.value }))}
+              >
+                <MenuItem value="">선택안함</MenuItem>
+                {BROKERS.map((b) => <MenuItem key={b} value={b}>{b}</MenuItem>)}
+              </Select>
+            </FormControl>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleJoinClose}>취소</Button>
+          <Button onClick={handleJoinSubmit} variant="contained" disabled={!joinForm.stockName || !joinForm.ipoPrice || joinSaving}>
+            {joinSaving ? '등록 중...' : '등록'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }

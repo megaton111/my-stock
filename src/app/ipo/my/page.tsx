@@ -5,6 +5,7 @@ import {
   Container, Box, Typography, Paper, Stack, CircularProgress, Button, IconButton,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField,
+  FormControl, InputLabel, Select, MenuItem,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -24,6 +25,13 @@ interface FormState {
   fee: string;
   broker: string;
 }
+
+const BROKERS = [
+  '한국투자증권', '미래에셋증권', '삼성증권', 'NH투자증권', 'KB증권',
+  '키움증권', '신한투자증권', '대신증권', '하나증권', '토스증권',
+  '카카오페이증권', 'IBK투자증권', '유안타증권', 'DB금융투자', '한화투자증권',
+  '교보증권', '현대차증권', 'SK증권', '부국증권', '이베스트투자증권',
+];
 
 const EMPTY_FORM: FormState = { stockName: '', ipoPrice: '', allocatedQuantity: '', sellPrice: '', sellDate: '', fee: '', broker: '' };
 
@@ -68,7 +76,7 @@ export default function MyIpoPage() {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
   };
 
-  const isValid = form.stockName && form.ipoPrice && form.allocatedQuantity;
+  const isValid = form.stockName && form.ipoPrice;
 
   const handleSubmit = async () => {
     if (!isValid || !userId) return;
@@ -77,7 +85,7 @@ export default function MyIpoPage() {
       userId,
       stockName: form.stockName,
       ipoPrice: Number(form.ipoPrice),
-      allocatedQuantity: Number(form.allocatedQuantity),
+      allocatedQuantity: form.allocatedQuantity ? Number(form.allocatedQuantity) : 0,
       sellPrice: form.sellPrice ? Number(form.sellPrice) : null,
       sellDate: form.sellDate || null,
       fee: form.fee ? Number(form.fee) : 0,
@@ -229,7 +237,17 @@ export default function MyIpoPage() {
             <TextField label="종목명" value={form.stockName} onChange={handleChange('stockName')} fullWidth size="small" />
             <TextField label="공모가 (원)" value={form.ipoPrice} onChange={handleChange('ipoPrice')} fullWidth size="small" type="number" />
             <TextField label="배정수량 (주)" value={form.allocatedQuantity} onChange={handleChange('allocatedQuantity')} fullWidth size="small" type="number" />
-            <TextField label="증권사" value={form.broker} onChange={handleChange('broker')} fullWidth size="small" placeholder="예: 한국투자증권" />
+            <FormControl fullWidth size="small">
+              <InputLabel>증권사</InputLabel>
+              <Select
+                value={form.broker}
+                label="증권사"
+                onChange={(e) => setForm((prev) => ({ ...prev, broker: e.target.value }))}
+              >
+                <MenuItem value="">선택안함</MenuItem>
+                {BROKERS.map((b) => <MenuItem key={b} value={b}>{b}</MenuItem>)}
+              </Select>
+            </FormControl>
             <TextField label="매도가 (원)" value={form.sellPrice} onChange={handleChange('sellPrice')} fullWidth size="small" type="number" />
             <TextField label="매도일" value={form.sellDate} onChange={handleChange('sellDate')} fullWidth size="small" type="date" slotProps={{ inputLabel: { shrink: true } }} />
             <TextField label="수수료 (원)" value={form.fee} onChange={handleChange('fee')} fullWidth size="small" type="number" />
