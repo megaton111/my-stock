@@ -23,6 +23,7 @@ const MENU_ITEMS: MenuItem[] = [
   { label: '주식 모으기', path: '/collect' },
   { label: '적립식 매수', path: '/dca' },
   { label: 'MDD 분석', path: '/mdd' },
+  { label: '매매일지', path: '/trading-journal' },
   {
     label: '공모주',
     children: [

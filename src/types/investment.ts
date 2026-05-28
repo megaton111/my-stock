@@ -16,6 +16,7 @@ export interface Investment {
   accountName?: string;
   accountNumber?: string;
   positionId?: number;
+  journalId?: number;
   sources?: SourceBreakdown;
 }
 

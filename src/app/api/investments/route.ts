@@ -19,6 +19,7 @@ interface MergedItem {
   accountName: string;
   accountNumber: string;
   positionId?: number;
+  journalId?: number;
   sources: SourceBreakdown;
 }
 
@@ -35,6 +36,7 @@ function toInvestment(row: Record<string, unknown>): MergedItem {
     accountName: row.account_name ? String(row.account_name) : '',
     accountNumber: row.account_number ? String(row.account_number) : '',
     positionId: row.position_id != null ? Number(row.position_id) : undefined,
+    journalId: row.journal_id != null ? Number(row.journal_id) : undefined,
     sources: { investments: Number(row.quantity) },
   };
 }

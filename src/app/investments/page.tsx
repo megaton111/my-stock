@@ -25,6 +25,7 @@ import BuyDialog, { BuySubmitData, BuyEditInitial } from '@/components/BuyDialog
 import PositionHistory from '@/components/PositionHistory';
 import type { TransactionItem } from '@/app/api/positions/[id]/transactions/route';
 import { useRouter } from 'next/navigation';
+import JournalLinkDialog from '@/components/JournalLinkDialog';
 
 /** collect-* / dca-* 접두사 ID로 병합 항목 여부를 판별 */
 function isMergedEntry(id: string): false | 'collect' | 'dca' {
@@ -93,6 +94,7 @@ export default function InvestmentsPage() {
   const [closedLoading, setClosedLoading] = useState(true);
   const [closedOpen, setClosedOpen] = useState(false);
   const [expandedClosedId, setExpandedClosedId] = useState<number | null>(null);
+  const [journalTarget, setJournalTarget] = useState<Investment | null>(null);
 
   useEffect(() => {
     if (!userId) return;
@@ -135,12 +137,20 @@ export default function InvestmentsPage() {
   }, [investments, sortKey, sortDir, exchangeRate]);
 
   const handleAdd = async (data: InvestmentInput) => {
-    await fetch('/api/investments', {
+    const res = await fetch('/api/investments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...data, userId }),
     });
-    refetch();
+    await refetch();
+    // 현금이 아닌 종목 등록 후 매매일지 작성 안내
+    if (res.ok && !data.ticker.startsWith('CASH-')) {
+      const created = await res.json();
+      setJournalTarget({
+        ...data,
+        id: created.id,
+      } as Investment);
+    }
   };
 
   const handleEdit = async (data: InvestmentInput) => {
@@ -208,6 +218,19 @@ export default function InvestmentsPage() {
     }
     setSelling(null);
     setPositionRefreshKey((k) => k + 1);
+    refetch();
+  };
+
+  const handleJournalClick = (item: Investment) => {
+    if (item.journalId) {
+      router.push(`/trading-journal/detail?id=${item.journalId}`);
+    } else {
+      setJournalTarget(item);
+    }
+  };
+
+  const handleJournalCreated = () => {
+    setJournalTarget(null);
     refetch();
   };
 
@@ -362,6 +385,16 @@ export default function InvestmentsPage() {
                                 매도
                               </Button>
                             )}
+                            {!cash && (
+                              <Button
+                                size="small"
+                                variant="text"
+                                onClick={() => handleJournalClick(item)}
+                                sx={{ minWidth: 'auto', px: 1, py: 0.25, fontSize: '0.75rem', color: item.journalId ? 'secondary.main' : 'gray6' }}
+                              >
+                                일지
+                              </Button>
+                            )}
                             <Button
                               size="small"
                               variant="text"
@@ -472,6 +505,16 @@ export default function InvestmentsPage() {
                                   sx={{ minWidth: 'auto', px: 1, py: 0.25, fontSize: '0.75rem', color: 'error.main' }}
                                 >
                                   매도
+                                </Button>
+                              )}
+                              {!cash && (
+                                <Button
+                                  size="small"
+                                  variant="text"
+                                  onClick={() => handleJournalClick(item)}
+                                  sx={{ minWidth: 'auto', px: 1, py: 0.25, fontSize: '0.75rem', color: item.journalId ? 'secondary.main' : 'gray6' }}
+                                >
+                                  일지
                                 </Button>
                               )}
                               <Button
@@ -690,6 +733,14 @@ export default function InvestmentsPage() {
         currentPrice={buying ? prices[buying.ticker] : undefined}
         currentExchangeRate={exchangeRate}
         editTransaction={editingBuyTx}
+      />
+
+      <JournalLinkDialog
+        open={!!journalTarget}
+        onClose={() => setJournalTarget(null)}
+        onCreated={handleJournalCreated}
+        investment={journalTarget}
+        userId={userId}
       />
     </Container>
   );
