@@ -10,7 +10,6 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, DialogContentText,
   Snackbar, Alert, Chip,
 } from '@mui/material';
-import CalculateIcon from '@mui/icons-material/Calculate';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -24,11 +23,28 @@ import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/ko';
 import dynamic from 'next/dynamic';
 import 'react-quill-new/dist/quill.snow.css';
+import DOMPurify from 'dompurify';
 import PageHeader from '@/components/PageHeader';
 import { useUser } from '@/hooks/useUser';
 import { formatRate, profitColor } from '@/utils/format';
 
 const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
+
+async function uploadImage(file: File, userId: string): Promise<string | null> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('userId', userId);
+  try {
+    const res = await fetch('/api/trading-journal/upload', { method: 'POST', body: formData });
+    if (res.ok) {
+      const data = await res.json();
+      return data.url;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 interface Transaction {
   id: string;
@@ -88,6 +104,11 @@ function TradingJournalDetail() {
   const [addForm, setAddForm] = useState<AddForm>(EMPTY_ADD);
   const [addSaving, setAddSaving] = useState(false);
 
+  // 거래 수정
+  const [editingTx, setEditingTx] = useState<string | null>(null);
+  const [editTxForm, setEditTxForm] = useState({ price: '', quantity: '', tradeDate: null as Dayjs | null });
+  const [editTxSaving, setEditTxSaving] = useState(false);
+
   // 거래 삭제
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
@@ -103,9 +124,92 @@ function TradingJournalDetail() {
   const [editingMemo, setEditingMemo] = useState(false);
   const [memoValue, setMemoValue] = useState('');
   const [memoSaving, setMemoSaving] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
 
   // 알림
   const [snack, setSnack] = useState<{ msg: string; severity: 'success' | 'error' } | null>(null);
+
+  // Quill 에디터 인스턴스 접근 (동적 import에서 ref 대신 DOM으로 접근)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getQuillEditor = useCallback((): any => {
+    const container = document.querySelector('.ql-container');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (container as any)?.__quill ?? null;
+  }, []);
+
+  // 이미지 업로드 후 에디터에 삽입
+  const insertImageToEditor = useCallback(async (file: File) => {
+    if (!user) return;
+    setImageUploading(true);
+    try {
+      const url = await uploadImage(file, String(user.id));
+      if (!url) {
+        setSnack({ msg: '이미지 업로드에 실패했습니다.', severity: 'error' });
+        return;
+      }
+      const editor = getQuillEditor();
+      if (editor) {
+        const range = editor.getSelection(true);
+        editor.insertEmbed(range.index, 'image', url);
+        editor.setSelection(range.index + 1);
+      } else {
+        setMemoValue((prev) => prev + `<p><img src="${url}" /></p>`);
+      }
+    } finally {
+      setImageUploading(false);
+    }
+  }, [user, getQuillEditor]);
+
+  // 툴바 이미지 버튼 핸들러
+  const imageHandler = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/png,image/jpeg,image/gif,image/webp';
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (file) insertImageToEditor(file);
+    };
+    input.click();
+  }, [insertImageToEditor]);
+
+  // 클립보드 붙여넣기 핸들러
+  useEffect(() => {
+    if (!editingMemo) return;
+
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) insertImageToEditor(file);
+          return;
+        }
+      }
+    };
+
+    const editorEl = document.querySelector('.ql-editor');
+    editorEl?.addEventListener('paste', handlePaste as EventListener);
+    return () => editorEl?.removeEventListener('paste', handlePaste as EventListener);
+  }, [editingMemo, insertImageToEditor]);
+
+  const quillModules = useMemo(() => ({
+    toolbar: {
+      container: [
+        [{ header: [1, 2, 3, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ color: [] }, { background: [] }],
+        [{ list: 'ordered' }, { list: 'bullet' }],
+        ['blockquote', 'code-block'],
+        ['link', 'image'],
+        ['clean'],
+      ],
+      handlers: {
+        image: imageHandler,
+      },
+    },
+  }), [imageHandler]);
 
   const fetchDetail = useCallback(async () => {
     if (!user || !journalId) return;
@@ -221,6 +325,47 @@ function TradingJournalDetail() {
     }
   };
 
+  // 거래 수정 시작
+  const startEditTx = (tx: Transaction) => {
+    setEditingTx(tx.id);
+    setEditTxForm({
+      price: String(tx.price),
+      quantity: String(tx.quantity),
+      tradeDate: dayjs(tx.tradeDate),
+    });
+  };
+
+  // 거래 수정 저장
+  const handleEditTransaction = async () => {
+    if (!user || !detail || !editingTx || !editTxForm.price || !editTxForm.quantity || !editTxForm.tradeDate) return;
+    setEditTxSaving(true);
+    try {
+      const price = Number(editTxForm.price);
+      const quantity = Number(editTxForm.quantity);
+      const res = await fetch(`/api/trading-journal/${detail.id}/transactions/${editingTx}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          price,
+          quantity,
+          amount: price * quantity,
+          tradeDate: editTxForm.tradeDate.format('YYYY-MM-DD'),
+        }),
+      });
+      if (res.ok) {
+        setEditingTx(null);
+        await fetchDetail();
+        setSnack({ msg: '거래가 수정되었습니다.', severity: 'success' });
+      } else {
+        const err = await res.json();
+        setSnack({ msg: err.error || '수정 실패', severity: 'error' });
+      }
+    } finally {
+      setEditTxSaving(false);
+    }
+  };
+
   // 일지 삭제
   const handleDeleteJournal = async () => {
     if (!user || !detail) return;
@@ -331,7 +476,7 @@ function TradingJournalDetail() {
       </Stack>
 
       {/* 매수이유 / 계획 */}
-      <Paper sx={{ p: 2.5, mb: 3 }}>
+      <Box sx={{ mb: 3 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
           <Typography variant="subtitle1" fontWeight={600}>매수 정보</Typography>
           {!editingInfo ? (
@@ -365,83 +510,45 @@ function TradingJournalDetail() {
               <TextField label="총 투자예상금액" size="small" type="number" value={infoForm.expectedInvestment} onChange={(e) => setInfoForm((f) => ({ ...f, expectedInvestment: e.target.value }))} sx={{ flex: 1 }} />
               <TextField label="목표 매도가" size="small" type="number" value={infoForm.targetSellPrice} onChange={(e) => setInfoForm((f) => ({ ...f, targetSellPrice: e.target.value }))} sx={{ flex: 1 }} />
             </Stack>
-            {(() => {
-              const firstBuy = detail.transactions.find((t) => t.type === 'buy');
-              const price = firstBuy?.price || 0;
-              const qty = cumulativeData.length > 0 ? cumulativeData[cumulativeData.length - 1].holdingQty : 0;
-              const expected = Number(infoForm.expectedInvestment) || 0;
-              if (!expected || !price || !qty) return (
-                <TextField label="손절가" size="small" type="number" value={infoForm.stopLossPrice} onChange={(e) => setInfoForm((f) => ({ ...f, stopLossPrice: e.target.value }))} fullWidth />
-              );
-              const lossLimit = expected * 0.02;
-              const perShareLoss = lossLimit / qty;
-              const stopLoss = Math.max(price - perShareLoss, 0);
-              return (
-                <>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <TextField label="손절가" size="small" type="number" value={infoForm.stopLossPrice} onChange={(e) => setInfoForm((f) => ({ ...f, stopLossPrice: e.target.value }))} sx={{ flex: 1 }} />
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      startIcon={<CalculateIcon />}
-                      onClick={() => setInfoForm((f) => ({ ...f, stopLossPrice: String(Math.floor(stopLoss)) }))}
-                      sx={{ whiteSpace: 'nowrap', height: 40 }}
-                    >
-                      2% 룰 적용
-                    </Button>
-                  </Stack>
-                  <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'gray1' }}>
-                    <Stack direction="row" spacing={2} flexWrap="wrap">
-                      <Typography variant="caption" color="text.secondary">
-                        손실 한도(2%): {Math.floor(lossLimit).toLocaleString()}원
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        주당 허용 손실: {perShareLoss.toLocaleString(undefined, { maximumFractionDigits: 2 })}원
-                      </Typography>
-                      <Typography variant="caption" fontWeight={700} color="primary.main">
-                        손절가: {stopLoss.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                      </Typography>
-                    </Stack>
-                  </Paper>
-                </>
-              );
-            })()}
+            <TextField label="손절가" size="small" type="number" value={infoForm.stopLossPrice} onChange={(e) => setInfoForm((f) => ({ ...f, stopLossPrice: e.target.value }))} fullWidth />
           </Stack>
         ) : (
-          <Stack spacing={1.5}>
-            <Box>
-              <Typography variant="caption" color="text.secondary" fontWeight={600}>매수 이유</Typography>
-              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{detail.buyReason || '-'}</Typography>
-            </Box>
-            <Box>
-              <Typography variant="caption" color="text.secondary" fontWeight={600}>계획</Typography>
-              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{detail.plan || '-'}</Typography>
-            </Box>
-            {(detail.expectedInvestment > 0 || detail.targetSellPrice > 0 || detail.stopLossPrice > 0) && (
-              <Stack direction="row" spacing={3}>
-                {detail.expectedInvestment > 0 && (
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" fontWeight={600}>총 투자예상금액</Typography>
-                    <Typography variant="body2">{formatAmount(detail.expectedInvestment, detail.marketType)}</Typography>
-                  </Box>
-                )}
-                {detail.targetSellPrice > 0 && (
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" fontWeight={600}>목표 매도가</Typography>
-                    <Typography variant="body2" color="error.main">{formatPrice(detail.targetSellPrice, detail.marketType)}</Typography>
-                  </Box>
-                )}
-                {detail.stopLossPrice > 0 && (
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" fontWeight={600}>손절가</Typography>
-                    <Typography variant="body2" color="primary.main">{formatPrice(detail.stopLossPrice, detail.marketType)}</Typography>
-                  </Box>
-                )}
-              </Stack>
-            )}
-          </Stack>
+          <Paper sx={{ p: 2.5 }}>
+            <Stack spacing={1.5}>
+              <Box>
+                <Typography variant="caption" color="text.secondary" fontWeight={600}>매수 이유</Typography>
+                <Typography sx={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>{detail.buyReason || '-'}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary" fontWeight={600}>계획</Typography>
+                <Typography sx={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>{detail.plan || '-'}</Typography>
+              </Box>
+              {(detail.expectedInvestment > 0 || detail.targetSellPrice > 0 || detail.stopLossPrice > 0) && (
+                <Stack direction="row" spacing={3}>
+                  {detail.expectedInvestment > 0 && (
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" fontWeight={600}>총 투자예상금액</Typography>
+                      <Typography variant="body2">{formatAmount(detail.expectedInvestment, detail.marketType)}</Typography>
+                    </Box>
+                  )}
+                  {detail.targetSellPrice > 0 && (
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" fontWeight={600}>목표 매도가</Typography>
+                      <Typography variant="body2" color="error.main">{formatPrice(detail.targetSellPrice, detail.marketType)}</Typography>
+                    </Box>
+                  )}
+                  {detail.stopLossPrice > 0 && (
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" fontWeight={600}>손절가</Typography>
+                      <Typography variant="body2" color="primary.main">{formatPrice(detail.stopLossPrice, detail.marketType)}</Typography>
+                    </Box>
+                  )}
+                </Stack>
+              )}
+            </Stack>
+          </Paper>
         )}
-      </Paper>
+      </Box>
 
       {/* 거래 테이블 */}
       <Box sx={{ mb: 3 }}>
@@ -453,10 +560,11 @@ function TradingJournalDetail() {
         </Stack>
 
         <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-          <Table size="small" sx={{ minWidth: 800, '& td, & th': { px: 0.5, py: 0.25 }, '& thead th': { bgcolor: 'gray1' } }}>
+          <Table size="small" sx={{ minWidth: 800, fontSize: '0.75rem', '& td, & th': { px: 0.5, py: 0.25, fontSize: 'inherit' }, '& thead th': { bgcolor: 'gray1' }, '& input, & .MuiSelect-select, & .MuiInputBase-input': { fontSize: '0.75rem' } }}>
             <TableHead>
               <TableRow>
                 <TableCell align="center" rowSpan={2} sx={{ fontWeight: 600, borderRight: '1px solid', borderColor: 'divider', minWidth: 50 }}>구분</TableCell>
+                <TableCell align="center" rowSpan={2} sx={{ fontWeight: 600, borderRight: '1px solid', borderColor: 'divider', minWidth: 100 }}>일자</TableCell>
                 <TableCell align="center" colSpan={3} sx={{ fontWeight: 600, borderRight: '1px solid', borderColor: 'divider' }}>매수</TableCell>
                 <TableCell align="center" colSpan={3} sx={{ fontWeight: 600, borderRight: '1px solid', borderColor: 'divider' }}>매도</TableCell>
                 <TableCell align="center" rowSpan={2} sx={{ fontWeight: 600, minWidth: 70 }}>보유수량</TableCell>
@@ -477,11 +585,71 @@ function TradingJournalDetail() {
             </TableHead>
             <TableBody>
               {cumulativeData.map((row) => (
+                editingTx === row.id ? (
+                  <LocalizationProvider key={row.id} dateAdapter={AdapterDayjs} adapterLocale="ko">
+                    <TableRow sx={{ bgcolor: 'action.hover' }}>
+                      <TableCell align="center" sx={{ borderRight: '1px solid', borderColor: 'divider' }}>
+                        <Typography fontSize="inherit" fontWeight={600} color={row.type === 'buy' ? 'error.main' : 'primary.main'}>
+                          {row.type === 'buy' ? '매수' : '매도'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="center" sx={{ borderRight: '1px solid', borderColor: 'divider' }}>
+                        <DatePicker
+                          value={editTxForm.tradeDate}
+                          onChange={(v) => setEditTxForm((f) => ({ ...f, tradeDate: v }))}
+                          slotProps={{ textField: { size: 'small', sx: { width: 140, '& .MuiInputBase-input': { fontSize: '0.75rem' }, '& .MuiInputBase-root': { fontSize: '0.75rem' } } } }}
+                        />
+                      </TableCell>
+                      {/* 매수 입력 */}
+                      <TableCell align="right">
+                        {row.type === 'buy' ? (
+                          <TextField size="small" type="number" value={editTxForm.price} onChange={(e) => setEditTxForm((f) => ({ ...f, price: e.target.value }))} sx={{ width: 110 }} />
+                        ) : '-'}
+                      </TableCell>
+                      <TableCell align="right">
+                        {row.type === 'buy' ? (
+                          <TextField size="small" type="number" value={editTxForm.quantity} onChange={(e) => setEditTxForm((f) => ({ ...f, quantity: e.target.value }))} sx={{ width: 80 }} />
+                        ) : '-'}
+                      </TableCell>
+                      <TableCell align="right" sx={{ borderRight: '1px solid', borderColor: 'divider' }}>
+                        {row.type === 'buy' ? formatAmount((Number(editTxForm.price) || 0) * (Number(editTxForm.quantity) || 0), detail.marketType) : '-'}
+                      </TableCell>
+                      {/* 매도 입력 */}
+                      <TableCell align="right">
+                        {row.type === 'sell' ? (
+                          <TextField size="small" type="number" value={editTxForm.price} onChange={(e) => setEditTxForm((f) => ({ ...f, price: e.target.value }))} sx={{ width: 110 }} />
+                        ) : '-'}
+                      </TableCell>
+                      <TableCell align="right">
+                        {row.type === 'sell' ? (
+                          <TextField size="small" type="number" value={editTxForm.quantity} onChange={(e) => setEditTxForm((f) => ({ ...f, quantity: e.target.value }))} sx={{ width: 80 }} />
+                        ) : '-'}
+                      </TableCell>
+                      <TableCell align="right" sx={{ borderRight: '1px solid', borderColor: 'divider' }}>
+                        {row.type === 'sell' ? formatAmount((Number(editTxForm.price) || 0) * (Number(editTxForm.quantity) || 0), detail.marketType) : '-'}
+                      </TableCell>
+                      <TableCell colSpan={5} />
+                      <TableCell align="center">
+                        <Stack direction="row" spacing={0.5}>
+                          <IconButton size="small" color="primary" onClick={handleEditTransaction} disabled={editTxSaving || !editTxForm.price || !editTxForm.quantity}>
+                            <CheckIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton size="small" onClick={() => setEditingTx(null)}>
+                            <CloseIcon fontSize="small" />
+                          </IconButton>
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  </LocalizationProvider>
+                ) : (
                 <TableRow key={row.id}>
                   <TableCell align="center" sx={{ borderRight: '1px solid', borderColor: 'divider' }}>
-                    <Typography variant="body2" fontWeight={600} color={row.type === 'buy' ? 'error.main' : 'primary.main'}>
+                    <Typography fontSize="inherit" fontWeight={600} color={row.type === 'buy' ? 'error.main' : 'primary.main'}>
                       {row.type === 'buy' ? '매수' : '매도'}
                     </Typography>
+                  </TableCell>
+                  <TableCell align="center" sx={{ borderRight: '1px solid', borderColor: 'divider' }}>
+                    <Typography fontSize="inherit">{row.tradeDate}</Typography>
                   </TableCell>
                   {/* 매수 셀 */}
                   <TableCell align="right" sx={{ color: row.type === 'buy' ? 'text.primary' : 'text.disabled' }}>
@@ -514,11 +682,17 @@ function TradingJournalDetail() {
                     {row.profitRate !== null ? formatRate(row.profitRate) : '-'}
                   </TableCell>
                   <TableCell align="center">
-                    <IconButton size="small" onClick={() => setDeleteTarget(row.id)} sx={{ opacity: 0.5, '&:hover': { opacity: 1 } }}>
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
+                    <Stack direction="row" spacing={0.5}>
+                      <IconButton size="small" onClick={() => startEditTx(row)} sx={{ opacity: 0.5, '&:hover': { opacity: 1 } }}>
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton size="small" onClick={() => setDeleteTarget(row.id)} sx={{ opacity: 0.5, '&:hover': { opacity: 1 } }}>
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Stack>
                   </TableCell>
                 </TableRow>
+                )
               ))}
 
               {/* 추가 입력 행 */}
@@ -533,15 +707,22 @@ function TradingJournalDetail() {
                         </Select>
                       </FormControl>
                     </TableCell>
+                    <TableCell align="center" sx={{ borderRight: '1px solid', borderColor: 'divider' }}>
+                      <DatePicker
+                        value={addForm.tradeDate}
+                        onChange={(v) => setAddForm((f) => ({ ...f, tradeDate: v }))}
+                        slotProps={{ textField: { size: 'small', sx: { width: 140, '& .MuiInputBase-input': { fontSize: '0.75rem' }, '& .MuiInputBase-root': { fontSize: '0.75rem' } } } }}
+                      />
+                    </TableCell>
                     {/* 매수 입력 */}
                     <TableCell align="right">
                       {addForm.type === 'buy' ? (
-                        <TextField size="small" type="number" value={addForm.price} onChange={(e) => setAddForm((f) => ({ ...f, price: e.target.value }))} sx={{ width: 80 }} />
+                        <TextField size="small" type="number" value={addForm.price} onChange={(e) => setAddForm((f) => ({ ...f, price: e.target.value }))} sx={{ width: 110 }} />
                       ) : '-'}
                     </TableCell>
                     <TableCell align="right">
                       {addForm.type === 'buy' ? (
-                        <TextField size="small" type="number" value={addForm.quantity} onChange={(e) => setAddForm((f) => ({ ...f, quantity: e.target.value }))} sx={{ width: 60 }} />
+                        <TextField size="small" type="number" value={addForm.quantity} onChange={(e) => setAddForm((f) => ({ ...f, quantity: e.target.value }))} sx={{ width: 80 }} />
                       ) : '-'}
                     </TableCell>
                     <TableCell align="right" sx={{ borderRight: '1px solid', borderColor: 'divider' }}>
@@ -550,24 +731,18 @@ function TradingJournalDetail() {
                     {/* 매도 입력 */}
                     <TableCell align="right">
                       {addForm.type === 'sell' ? (
-                        <TextField size="small" type="number" value={addForm.price} onChange={(e) => setAddForm((f) => ({ ...f, price: e.target.value }))} sx={{ width: 80 }} />
+                        <TextField size="small" type="number" value={addForm.price} onChange={(e) => setAddForm((f) => ({ ...f, price: e.target.value }))} sx={{ width: 110 }} />
                       ) : '-'}
                     </TableCell>
                     <TableCell align="right">
                       {addForm.type === 'sell' ? (
-                        <TextField size="small" type="number" value={addForm.quantity} onChange={(e) => setAddForm((f) => ({ ...f, quantity: e.target.value }))} sx={{ width: 60 }} />
+                        <TextField size="small" type="number" value={addForm.quantity} onChange={(e) => setAddForm((f) => ({ ...f, quantity: e.target.value }))} sx={{ width: 80 }} />
                       ) : '-'}
                     </TableCell>
                     <TableCell align="right" sx={{ borderRight: '1px solid', borderColor: 'divider' }}>
                       {addForm.type === 'sell' ? formatAmount(addFormAmount, detail.marketType) : '-'}
                     </TableCell>
-                    <TableCell colSpan={5} align="center">
-                      <DatePicker
-                        value={addForm.tradeDate}
-                        onChange={(v) => setAddForm((f) => ({ ...f, tradeDate: v }))}
-                        slotProps={{ textField: { size: 'small', sx: { width: 140 } } }}
-                      />
-                    </TableCell>
+                    <TableCell colSpan={5} />
                     <TableCell align="center">
                       <Stack direction="row" spacing={0.5}>
                         <IconButton size="small" color="primary" onClick={handleAddTransaction} disabled={addSaving || !addForm.price || !addForm.quantity}>
@@ -587,12 +762,12 @@ function TradingJournalDetail() {
       </Box>
 
       {/* 메모 영역 */}
-      <Paper sx={{ p: 2.5 }}>
+      <Box>
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
           <Typography variant="subtitle1" fontWeight={600}>메모</Typography>
           {!editingMemo ? (
-            <Button size="small" onClick={() => setEditingMemo(true)}>
-              {detail.memo ? '메모 수정' : '메모 추가'}
+            <Button size="small" startIcon={detail.memo ? <EditIcon /> : <AddIcon />} onClick={() => setEditingMemo(true)}>
+              {detail.memo ? '수정' : '추가'}
             </Button>
           ) : (
             <Stack direction="row" spacing={1}>
@@ -607,15 +782,25 @@ function TradingJournalDetail() {
         </Stack>
 
         {editingMemo ? (
-          <Box sx={{ '.ql-container': { minHeight: 200 } }}>
-            <ReactQuill theme="snow" value={memoValue} onChange={setMemoValue} />
+          <Box sx={{ position: 'relative', '.ql-container': { minHeight: 200 } }}>
+            <ReactQuill theme="snow" value={memoValue} onChange={setMemoValue} modules={quillModules} />
+            {imageUploading && (
+              <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(255,255,255,0.7)', zIndex: 10 }}>
+                <Stack alignItems="center" spacing={1}>
+                  <CircularProgress size={28} />
+                  <Typography variant="caption" color="text.secondary">이미지 업로드 중...</Typography>
+                </Stack>
+              </Box>
+            )}
           </Box>
         ) : detail.memo ? (
-          <Box sx={{ '& img': { maxWidth: '100%' }, '& p': { m: 0 } }} dangerouslySetInnerHTML={{ __html: detail.memo }} />
+          <Paper sx={{ p: 2.5 }}>
+            <Box sx={{ fontSize: 12, '& img': { maxWidth: '50%' }, '& p': { m: 0, minHeight: '1.4em' } }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(detail.memo) }} />
+          </Paper>
         ) : (
           <Typography variant="body2" color="text.secondary">메모가 없습니다.</Typography>
         )}
-      </Paper>
+      </Box>
 
       {/* 거래 삭제 확인 다이얼로그 */}
       <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)}>

@@ -6,9 +6,8 @@ import {
   Container, Box, Typography, Paper, Stack, CircularProgress, Button,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField,
-  FormControl, InputLabel, Select, MenuItem, IconButton,
+  FormControl, InputLabel, Select, MenuItem, IconButton, Snackbar, Alert,
 } from '@mui/material';
-import CalculateIcon from '@mui/icons-material/Calculate';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -29,7 +28,7 @@ interface JournalItem {
   firstBuyDate: string | null;
   lastSellDate: string | null;
   holdingQty: number;
-  resultStatus: 'holding' | 'sold';
+  resultStatus: 'waiting' | 'holding' | 'sold';
   realizedProfitRate: number | null;
 }
 
@@ -70,18 +69,8 @@ export default function TradingJournalPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
 
-  // 2% 룰 손절가 계산
-  const calcStopLoss = (() => {
-    const expected = Number(form.expectedInvestment) || 0;
-    const price = Number(form.price) || 0;
-    const qty = Number(form.quantity) || 0;
-    if (!expected || !price || !qty) return null;
-    const lossLimit = expected * 0.02;
-    const perShareLoss = lossLimit / qty;
-    const stopLoss = price - perShareLoss;
-    return { lossLimit, perShareLoss, stopLoss: Math.max(stopLoss, 0) };
-  })();
 
   const fetchList = useCallback(async () => {
     if (!user) return;
@@ -106,28 +95,53 @@ export default function TradingJournalPage() {
   })();
 
   const handleSubmit = async () => {
-    if (!user || !form.marketType || !form.stockName || !form.ticker || !form.price || !form.quantity || !form.tradeDate) return;
+    if (!user || !form.marketType || !form.stockName || !form.ticker) return;
+
+    const hasPrice = !!form.price;
+    const hasQuantity = !!form.quantity;
+
+    // 교차 검증: 수량만 입력하고 매수가 미입력
+    if (hasQuantity && !hasPrice) {
+      setSnackbar({ open: true, message: '수량을 입력한 경우 매수가도 입력해주세요.' });
+      return;
+    }
+    // 교차 검증: 매수가만 입력하고 수량 미입력
+    if (hasPrice && !hasQuantity) {
+      setSnackbar({ open: true, message: '매수가를 입력한 경우 수량도 입력해주세요.' });
+      return;
+    }
+    // 매수 정보가 있으면 매수일 필수
+    if (hasPrice && hasQuantity && !form.tradeDate) {
+      setSnackbar({ open: true, message: '매수 정보를 입력한 경우 매수일도 입력해주세요.' });
+      return;
+    }
+
     setSaving(true);
     try {
+      const payload: Record<string, unknown> = {
+        userId: user.id,
+        marketType: form.marketType,
+        stockName: form.stockName,
+        ticker: form.ticker,
+        broker: form.broker,
+        buyReason: form.buyReason,
+        plan: form.plan,
+        expectedInvestment: Number(form.expectedInvestment) || 0,
+        targetSellPrice: Number(form.targetSellPrice) || 0,
+        stopLossPrice: Number(form.stopLossPrice) || 0,
+      };
+
+      if (hasPrice && hasQuantity) {
+        payload.price = Number(form.price);
+        payload.quantity = Number(form.quantity);
+        payload.amount = buyAmount;
+        payload.tradeDate = form.tradeDate!.format('YYYY-MM-DD');
+      }
+
       const res = await fetch('/api/trading-journal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          marketType: form.marketType,
-          stockName: form.stockName,
-          ticker: form.ticker,
-          broker: form.broker,
-          buyReason: form.buyReason,
-          plan: form.plan,
-          expectedInvestment: Number(form.expectedInvestment) || 0,
-          targetSellPrice: Number(form.targetSellPrice) || 0,
-          stopLossPrice: Number(form.stopLossPrice) || 0,
-          price: Number(form.price),
-          quantity: Number(form.quantity),
-          amount: buyAmount,
-          tradeDate: form.tradeDate.format('YYYY-MM-DD'),
-        }),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
         setDialogOpen(false);
@@ -182,7 +196,9 @@ export default function TradingJournalPage() {
                 <TableRow key={item.id} hover sx={{ cursor: 'pointer' }}>
                   <TableCell align="center">{idx + 1}</TableCell>
                   <TableCell align="center">
-                    {item.resultStatus === 'holding' ? (
+                    {item.resultStatus === 'waiting' ? (
+                      <Typography variant="body2" fontWeight={600} color="warning.main">대기중</Typography>
+                    ) : item.resultStatus === 'holding' ? (
                       <Typography variant="body2" fontWeight={600} color="text.secondary">보유중</Typography>
                     ) : (
                       <Typography variant="body2" fontWeight={600} sx={{ color: profitColor(item.realizedProfitRate ?? 0) }}>
@@ -233,7 +249,7 @@ export default function TradingJournalPage() {
                 label="매수일"
                 value={form.tradeDate}
                 onChange={(v) => setForm((prev) => ({ ...prev, tradeDate: v }))}
-                slotProps={{ textField: { size: 'small', required: true, fullWidth: true } }}
+                slotProps={{ textField: { size: 'small', required: !!(form.price || form.quantity), fullWidth: true } }}
               />
 
               <FormControl fullWidth size="small">
@@ -244,8 +260,8 @@ export default function TradingJournalPage() {
               </FormControl>
 
               <Stack direction="row" spacing={2}>
-                <TextField label="매수가" size="small" required type="number" value={form.price} onChange={(e) => handleChange('price', e.target.value)} sx={{ flex: 1 }} />
-                <TextField label="수량" size="small" required type="number" value={form.quantity} onChange={(e) => handleChange('quantity', e.target.value)} sx={{ flex: 1 }} />
+                <TextField label="매수가" size="small" type="number" value={form.price} onChange={(e) => handleChange('price', e.target.value)} sx={{ flex: 1 }} />
+                <TextField label="수량" size="small" type="number" value={form.quantity} onChange={(e) => handleChange('quantity', e.target.value)} sx={{ flex: 1 }} />
               </Stack>
 
               <TextField label="매입금액" size="small" value={buyAmount.toLocaleString()} slotProps={{ input: { readOnly: true } }} />
@@ -255,36 +271,7 @@ export default function TradingJournalPage() {
               <TextField label="총 투자예상금액" size="small" type="number" value={form.expectedInvestment} onChange={(e) => handleChange('expectedInvestment', e.target.value)} />
               <TextField label="목표 매도가" size="small" type="number" value={form.targetSellPrice} onChange={(e) => handleChange('targetSellPrice', e.target.value)} />
 
-              {/* 손절가 + 2% 룰 자동 계산 */}
-              <Stack direction="row" spacing={1} alignItems="center">
-                <TextField label="손절가" size="small" type="number" value={form.stopLossPrice} onChange={(e) => handleChange('stopLossPrice', e.target.value)} sx={{ flex: 1 }} />
-                {calcStopLoss && (
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    startIcon={<CalculateIcon />}
-                    onClick={() => handleChange('stopLossPrice', String(Math.floor(calcStopLoss.stopLoss)))}
-                    sx={{ whiteSpace: 'nowrap', height: 40 }}
-                  >
-                    2% 룰 적용
-                  </Button>
-                )}
-              </Stack>
-              {calcStopLoss && (
-                <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'gray1' }}>
-                  <Stack direction="row" spacing={2} flexWrap="wrap">
-                    <Typography variant="caption" color="text.secondary">
-                      손실 한도(2%): {Math.floor(calcStopLoss.lossLimit).toLocaleString()}원
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      주당 허용 손실: {calcStopLoss.perShareLoss.toLocaleString(undefined, { maximumFractionDigits: 2 })}원
-                    </Typography>
-                    <Typography variant="caption" fontWeight={700} color="primary.main">
-                      손절가: {calcStopLoss.stopLoss.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                    </Typography>
-                  </Stack>
-                </Paper>
-              )}
+              <TextField label="손절가" size="small" type="number" value={form.stopLossPrice} onChange={(e) => handleChange('stopLossPrice', e.target.value)} />
             </Stack>
           </LocalizationProvider>
         </DialogContent>
@@ -293,12 +280,23 @@ export default function TradingJournalPage() {
           <Button
             variant="contained"
             onClick={handleSubmit}
-            disabled={saving || !form.marketType || !form.stockName || !form.ticker || !form.price || !form.quantity}
+            disabled={saving || !form.marketType || !form.stockName || !form.ticker}
           >
             {saving ? '등록 중...' : '등록'}
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar({ open: false, message: '' })}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert severity="warning" onClose={() => setSnackbar({ open: false, message: '' })}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 }

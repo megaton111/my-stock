@@ -56,10 +56,12 @@ export async function GET(request: NextRequest) {
     const firstBuyDate = buys.length > 0 ? buys[0].trade_date : null;
     const lastSellDate = sells.length > 0 ? sells[sells.length - 1].trade_date : null;
 
-    let resultStatus: 'holding' | 'sold' = 'holding';
+    let resultStatus: 'waiting' | 'holding' | 'sold' = 'holding';
     let realizedProfitRate: number | null = null;
 
-    if (holdingQty === 0 && totalSellQty > 0) {
+    if (txList.length === 0) {
+      resultStatus = 'waiting';
+    } else if (holdingQty === 0 && totalSellQty > 0) {
       resultStatus = 'sold';
       realizedProfitRate = totalBuyAmount > 0
         ? ((totalSellAmount - totalBuyAmount) / totalBuyAmount) * 100
@@ -84,7 +86,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(result);
 }
 
-// POST /api/trading-journal → 매매일지 등록 (journal + 첫 매수 거래 동시 생성)
+// POST /api/trading-journal → 매매일지 등록 (매수 정보 없이도 등록 가능)
 export async function POST(request: NextRequest) {
   const body = await request.json();
   const {
@@ -93,7 +95,7 @@ export async function POST(request: NextRequest) {
     price, quantity, amount, tradeDate,
   } = body;
 
-  if (!userId || !marketType || !stockName || !ticker || !tradeDate || price == null || quantity == null) {
+  if (!userId || !marketType || !stockName || !ticker) {
     return NextResponse.json({ error: '필수 항목이 누락되었습니다.' }, { status: 400 });
   }
 
@@ -118,21 +120,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: jError.message }, { status: 500 });
   }
 
-  const { error: txError } = await supabase
-    .from('trading_journal_transactions')
-    .insert({
-      journal_id: journal.id,
-      user_id: userId,
-      type: 'buy',
-      price,
-      quantity,
-      amount: amount || price * quantity,
-      trade_date: tradeDate,
-    });
+  // 매수 정보가 있을 때만 첫 거래 생성
+  if (price != null && quantity != null && tradeDate) {
+    const { error: txError } = await supabase
+      .from('trading_journal_transactions')
+      .insert({
+        journal_id: journal.id,
+        user_id: userId,
+        type: 'buy',
+        price,
+        quantity,
+        amount: amount || price * quantity,
+        trade_date: tradeDate,
+      });
 
-  if (txError) {
-    await supabase.from('trading_journals').delete().eq('id', journal.id);
-    return NextResponse.json({ error: txError.message }, { status: 500 });
+    if (txError) {
+      await supabase.from('trading_journals').delete().eq('id', journal.id);
+      return NextResponse.json({ error: txError.message }, { status: 500 });
+    }
   }
 
   // 투자내역(investment)과 연결

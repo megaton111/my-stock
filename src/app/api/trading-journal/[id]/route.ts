@@ -91,7 +91,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
   return NextResponse.json({ success: true });
 }
 
-// DELETE /api/trading-journal/[id]?userId=X → 일지 삭제
+// DELETE /api/trading-journal/[id]?userId=X → 일지 삭제 (Storage 이미지도 함께 정리)
 export async function DELETE(request: NextRequest, { params }: Params) {
   const { id } = await params;
   const userId = request.nextUrl.searchParams.get('userId');
@@ -99,6 +99,14 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   if (!userId) {
     return NextResponse.json({ error: 'userId가 필요합니다.' }, { status: 400 });
   }
+
+  // 삭제 전 memo에서 이미지 경로 추출
+  const { data: journal } = await supabase
+    .from('trading_journals')
+    .select('memo')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single();
 
   const { error } = await supabase
     .from('trading_journals')
@@ -108,6 +116,19 @@ export async function DELETE(request: NextRequest, { params }: Params) {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // Storage 이미지 정리 (삭제 실패해도 일지 삭제는 유지)
+  if (journal?.memo) {
+    const imgRegex = /journal-images\/([^"'\s)]+)/g;
+    const paths: string[] = [];
+    let match;
+    while ((match = imgRegex.exec(journal.memo)) !== null) {
+      paths.push(match[1]);
+    }
+    if (paths.length > 0) {
+      await supabase.storage.from('journal-images').remove(paths);
+    }
   }
 
   return NextResponse.json({ success: true });
