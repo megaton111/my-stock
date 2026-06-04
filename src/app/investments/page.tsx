@@ -268,7 +268,7 @@ export default function InvestmentsPage() {
             border: (theme) => `1px solid ${theme.palette.gray2}`,
             '& .MuiTableCell-root': {
               fontSize: '0.8rem',
-              padding: '8px 10px',
+              padding: '8px 4px',
             },
           }}
         >
