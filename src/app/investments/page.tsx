@@ -20,7 +20,7 @@ import { formatCurrency } from '@/utils/format';
 import { isCash } from '@/utils/assetClass';
 import PageHeader from '@/components/PageHeader';
 import InvestmentFormDialog from '@/components/InvestmentFormDialog';
-import SellDialog, { SellSubmitData } from '@/components/SellDialog';
+import SellDialog, { SellSubmitData, SellEditData } from '@/components/SellDialog';
 import BuyDialog, { BuySubmitData, BuyEditInitial } from '@/components/BuyDialog';
 import PositionHistory from '@/components/PositionHistory';
 import type { TransactionItem } from '@/app/api/positions/[id]/transactions/route';
@@ -94,6 +94,8 @@ export default function InvestmentsPage() {
   const [closedLoading, setClosedLoading] = useState(true);
   const [closedOpen, setClosedOpen] = useState(false);
   const [expandedClosedId, setExpandedClosedId] = useState<number | null>(null);
+  const [editingSellTx, setEditingSellTx] = useState<SellEditData | null>(null);
+  const [deletingSellTx, setDeletingSellTx] = useState<{ id: number; positionId: number; stockName: string } | null>(null);
   const [journalTarget, setJournalTarget] = useState<Investment | null>(null);
 
   useEffect(() => {
@@ -207,16 +209,44 @@ export default function InvestmentsPage() {
 
   const handleSell = async (data: SellSubmitData) => {
     if (!selling) return;
-    const res = await fetch(`/api/investments/${selling.id}/sell`, {
-      method: 'POST',
+    const isEdit = !!editingSellTx;
+    const url = isEdit
+      ? `/api/sell-transactions/${editingSellTx!.id}`
+      : `/api/investments/${selling.id}/sell`;
+    const res = await fetch(url, {
+      method: isEdit ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
     if (!res.ok) {
-      const { error } = await res.json().catch(() => ({ error: '매도 처리 중 오류가 발생했습니다.' }));
-      throw new Error(error || '매도 처리 실패');
+      const { error } = await res.json().catch(() => ({ error: isEdit ? '매도 수정 중 오류가 발생했습니다.' : '매도 처리 중 오류가 발생했습니다.' }));
+      throw new Error(error || (isEdit ? '매도 수정 실패' : '매도 처리 실패'));
     }
     setSelling(null);
+    setEditingSellTx(null);
+    setPositionRefreshKey((k) => k + 1);
+    refetch();
+  };
+
+  const openEditSell = (item: Investment, tx: TransactionItem) => {
+    setSelling(item);
+    setEditingSellTx({
+      id: tx.id,
+      sellDate: tx.date,
+      sellQuantity: tx.quantity,
+      sellPrice: tx.price,
+      exchangeRate: tx.exchangeRate ?? exchangeRate,
+    });
+  };
+
+  const handleDeleteSell = async () => {
+    if (!deletingSellTx) return;
+    const res = await fetch(`/api/sell-transactions/${deletingSellTx.id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: '매도 삭제 중 오류가 발생했습니다.' }));
+      throw new Error(error || '매도 삭제 실패');
+    }
+    setDeletingSellTx(null);
     setPositionRefreshKey((k) => k + 1);
     refetch();
   };
@@ -426,6 +456,8 @@ export default function InvestmentsPage() {
                             positionId={item.positionId}
                             refreshKey={positionRefreshKey}
                             onEditBuy={(tx) => openEditBuy(item, tx)}
+                            onEditSell={(tx) => openEditSell(item, tx)}
+                            onDeleteSell={(tx) => setDeletingSellTx({ id: tx.id, positionId: item.positionId!, stockName: item.name })}
                           />
                         )}
                       </TableCell>
@@ -709,6 +741,20 @@ export default function InvestmentsPage() {
         </DialogActions>
       </Dialog>
 
+      <Dialog open={!!deletingSellTx} onClose={() => setDeletingSellTx(null)}>
+        <DialogTitle>매도 내역 삭제</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            <strong>{deletingSellTx?.stockName}</strong>의 매도 기록을 삭제하시겠습니까?
+            삭제 시 보유 수량이 복원됩니다.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeletingSellTx(null)}>취소</Button>
+          <Button onClick={handleDeleteSell} color="error" variant="contained">삭제</Button>
+        </DialogActions>
+      </Dialog>
+
       <InvestmentFormDialog
         open={formOpen}
         onClose={() => { setFormOpen(false); setEditing(null); }}
@@ -718,11 +764,12 @@ export default function InvestmentsPage() {
 
       <SellDialog
         open={!!selling}
-        onClose={() => setSelling(null)}
+        onClose={() => { setSelling(null); setEditingSellTx(null); }}
         onSubmit={handleSell}
         investment={selling}
         currentPrice={selling ? prices[selling.ticker] : undefined}
         currentExchangeRate={exchangeRate}
+        editData={editingSellTx}
       />
 
       <BuyDialog

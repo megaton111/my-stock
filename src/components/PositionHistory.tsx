@@ -5,6 +5,7 @@ import {
   Box, Stack, Typography, Chip, Divider, CircularProgress, Skeleton, IconButton,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/EditOutlined';
+import DeleteIcon from '@mui/icons-material/DeleteOutlined';
 import { formatCurrency, formatProfit, profitColor } from '@/utils/format';
 import type { PositionHistoryResponse, TransactionItem } from '@/app/api/positions/[id]/transactions/route';
 
@@ -12,9 +13,11 @@ interface PositionHistoryProps {
   positionId: number;
   refreshKey?: number;
   onEditBuy?: (tx: TransactionItem) => void;
+  onEditSell?: (tx: TransactionItem) => void;
+  onDeleteSell?: (tx: TransactionItem) => void;
 }
 
-export default function PositionHistory({ positionId, refreshKey, onEditBuy }: PositionHistoryProps) {
+export default function PositionHistory({ positionId, refreshKey, onEditBuy, onEditSell, onDeleteSell }: PositionHistoryProps) {
   const [data, setData] = useState<PositionHistoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -120,6 +123,8 @@ export default function PositionHistory({ positionId, refreshKey, onEditBuy }: P
               tx={tx}
               currency={currency}
               onEditBuy={onEditBuy}
+              onEditSell={onEditSell}
+              onDeleteSell={onDeleteSell}
             />
           ))}
         </Stack>
@@ -132,13 +137,20 @@ function TransactionRow({
   tx,
   currency,
   onEditBuy,
+  onEditSell,
+  onDeleteSell,
 }: {
   tx: TransactionItem;
   currency: 'USD' | 'KRW';
   onEditBuy?: (tx: TransactionItem) => void;
+  onEditSell?: (tx: TransactionItem) => void;
+  onDeleteSell?: (tx: TransactionItem) => void;
 }) {
   const isSell = tx.type === 'sell';
-  const canEdit = !isSell && !!onEditBuy;
+  const canEditBuy = !isSell && !!onEditBuy;
+  const canEditSell = isSell && !!onEditSell;
+  const canDeleteSell = isSell && !!onDeleteSell;
+  const hasActions = canEditBuy || canEditSell || canDeleteSell;
   return (
     <Box
       sx={{
@@ -193,15 +205,39 @@ function TransactionRow({
       ) : (
         <Box />
       )}
-      {canEdit ? (
-        <IconButton
-          size="small"
-          onClick={() => onEditBuy!(tx)}
-          sx={{ p: 0.25 }}
-          aria-label="매수 내역 수정"
-        >
-          <EditIcon sx={{ fontSize: 16 }} />
-        </IconButton>
+      {hasActions ? (
+        <Stack direction="row" spacing={0}>
+          {canEditBuy && (
+            <IconButton
+              size="small"
+              onClick={() => onEditBuy!(tx)}
+              sx={{ p: 0.25 }}
+              aria-label="매수 내역 수정"
+            >
+              <EditIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          )}
+          {canEditSell && (
+            <IconButton
+              size="small"
+              onClick={() => onEditSell!(tx)}
+              sx={{ p: 0.25 }}
+              aria-label="매도 내역 수정"
+            >
+              <EditIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          )}
+          {canDeleteSell && (
+            <IconButton
+              size="small"
+              onClick={() => onDeleteSell!(tx)}
+              sx={{ p: 0.25, color: 'gray5' }}
+              aria-label="매도 내역 삭제"
+            >
+              <DeleteIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          )}
+        </Stack>
       ) : (
         <Box />
       )}

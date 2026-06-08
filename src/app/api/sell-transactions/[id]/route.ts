@@ -1,6 +1,155 @@
 import { NextRequest, NextResponse } from 'next/server';
 import supabase from '@/lib/supabase';
 
+// 매도 수정 — sell_transaction 갱신 + 실현손익 재계산 + investments/position 상태 동기화
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const body = await request.json();
+
+  const sellDate: string | undefined = body.sellDate;
+  const sellQuantity = Number(body.sellQuantity);
+  const sellPrice = Number(body.sellPrice);
+  const exchangeRate = Number(body.exchangeRate);
+
+  if (!sellDate || !sellQuantity || !sellPrice || !exchangeRate) {
+    return NextResponse.json({ error: '필수 항목이 누락되었습니다.' }, { status: 400 });
+  }
+  if (sellQuantity <= 0 || sellPrice <= 0 || exchangeRate <= 0) {
+    return NextResponse.json({ error: '수량/가격/환율은 0보다 커야 합니다.' }, { status: 400 });
+  }
+
+  // 1) 기존 매도 거래 조회
+  const { data: sellTx, error: sellError } = await supabase
+    .from('sell_transactions')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (sellError || !sellTx) {
+    return NextResponse.json({ error: '매도 내역을 찾을 수 없습니다.' }, { status: 404 });
+  }
+
+  const positionId = sellTx.position_id as number;
+
+  // 2) position + buys 조회 (수량 검증용)
+  const [{ data: buys }, { data: otherSells }] = await Promise.all([
+    supabase
+      .from('buy_transactions')
+      .select('buy_quantity, buy_price')
+      .eq('position_id', positionId),
+    supabase
+      .from('sell_transactions')
+      .select('id, sell_quantity, realized_pl_krw')
+      .eq('position_id', positionId)
+      .neq('id', id),
+  ]);
+
+  const totalBuyQty = (buys ?? []).reduce((s, b) => s + Number(b.buy_quantity), 0);
+  const totalBuyCost = (buys ?? []).reduce(
+    (s, b) => s + Number(b.buy_quantity) * Number(b.buy_price),
+    0,
+  );
+  const avgBuyPrice = totalBuyQty > 0 ? totalBuyCost / totalBuyQty : 0;
+  const otherSellQty = (otherSells ?? []).reduce((s, v) => s + Number(v.sell_quantity), 0);
+  const maxSellable = totalBuyQty - otherSellQty;
+
+  if (sellQuantity > maxSellable) {
+    return NextResponse.json(
+      { error: `매도 수량이 보유 수량(${maxSellable})을 초과합니다.` },
+      { status: 400 },
+    );
+  }
+
+  // 3) 실현손익 재계산
+  const realizedPl = (sellPrice - avgBuyPrice) * sellQuantity;
+  const currency = String(sellTx.currency);
+  const realizedPlKrw = currency === 'USD' ? realizedPl * exchangeRate : realizedPl;
+
+  // 4) sell_transaction 갱신
+  const { error: updateError } = await supabase
+    .from('sell_transactions')
+    .update({
+      sell_date: sellDate,
+      sell_quantity: sellQuantity,
+      sell_price: sellPrice,
+      avg_buy_price: Math.round(avgBuyPrice * 100) / 100,
+      exchange_rate: currency === 'USD' ? exchangeRate : 1,
+      realized_pl: Math.round(realizedPl * 100) / 100,
+      realized_pl_krw: Math.round(realizedPlKrw * 100) / 100,
+    })
+    .eq('id', id);
+
+  if (updateError) {
+    return NextResponse.json({ error: updateError.message }, { status: 500 });
+  }
+
+  // 5) investments/position 상태 동기화
+  const currentQty = maxSellable - sellQuantity;
+  const { data: existingInv } = await supabase
+    .from('investments')
+    .select('id')
+    .eq('position_id', positionId)
+    .maybeSingle();
+
+  const { data: position } = await supabase
+    .from('positions')
+    .select('*')
+    .eq('id', positionId)
+    .single();
+
+  if (currentQty > 0) {
+    if (existingInv) {
+      await supabase
+        .from('investments')
+        .update({ quantity: currentQty })
+        .eq('id', existingInv.id);
+    } else if (position) {
+      await supabase.from('investments').insert({
+        user_id: position.user_id,
+        name: position.stock_name,
+        ticker: position.ticker,
+        category: position.category,
+        quantity: currentQty,
+        avg_price: Math.round(avgBuyPrice * 100) / 100,
+        currency: position.currency,
+        broker: position.broker,
+        position_id: positionId,
+      });
+    }
+    if (position?.closed_at) {
+      await supabase
+        .from('positions')
+        .update({ closed_at: null, total_realized_pl_krw: null })
+        .eq('id', positionId);
+    }
+  } else {
+    // 전량매도 상태
+    if (existingInv) {
+      await supabase.from('investments').delete().eq('id', existingInv.id);
+    }
+    const allSellsPlKrw = (otherSells ?? []).reduce(
+      (s, v) => s + Number(v.realized_pl_krw), 0,
+    ) + Math.round(realizedPlKrw * 100) / 100;
+    await supabase
+      .from('positions')
+      .update({
+        closed_at: position?.closed_at || sellDate,
+        total_realized_pl_krw: Math.round(allSellsPlKrw * 100) / 100,
+      })
+      .eq('id', positionId);
+  }
+
+  return NextResponse.json({
+    success: true,
+    realizedPl: Math.round(realizedPl * 100) / 100,
+    realizedPlKrw: Math.round(realizedPlKrw * 100) / 100,
+    currentQuantity: currentQty,
+  });
+}
+
 // 매도 취소 — sell_transaction 삭제 + investments/position 상태 복원
 export async function DELETE(
   _request: NextRequest,

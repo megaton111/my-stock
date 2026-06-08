@@ -15,6 +15,14 @@ export interface SellSubmitData {
   exchangeRate: number;
 }
 
+export interface SellEditData {
+  id: number;
+  sellDate: string;
+  sellQuantity: number;
+  sellPrice: number;
+  exchangeRate: number;
+}
+
 interface SellDialogProps {
   open: boolean;
   onClose: () => void;
@@ -22,6 +30,7 @@ interface SellDialogProps {
   investment: Investment | null;
   currentPrice?: number;
   currentExchangeRate: number;
+  editData?: SellEditData | null;
 }
 
 function todayString() {
@@ -35,7 +44,9 @@ export default function SellDialog({
   investment,
   currentPrice,
   currentExchangeRate,
+  editData,
 }: SellDialogProps) {
+  const isEditMode = !!editData;
   const [sellDate, setSellDate] = useState(todayString());
   const [sellQuantity, setSellQuantity] = useState<number>(0);
   const [sellPrice, setSellPrice] = useState<number>(0);
@@ -45,16 +56,24 @@ export default function SellDialog({
   // 다이얼로그가 열릴 때 초기값 세팅
   useEffect(() => {
     if (open && investment) {
-      setSellDate(todayString());
-      setSellQuantity(0);
-      setSellPrice(currentPrice ?? investment.avgPrice);
-      setExchangeRate(currentExchangeRate);
+      if (editData) {
+        setSellDate(editData.sellDate);
+        setSellQuantity(editData.sellQuantity);
+        setSellPrice(editData.sellPrice);
+        setExchangeRate(editData.exchangeRate);
+      } else {
+        setSellDate(todayString());
+        setSellQuantity(0);
+        setSellPrice(currentPrice ?? investment.avgPrice);
+        setExchangeRate(currentExchangeRate);
+      }
       setSubmitting(false);
     }
-  }, [open, investment, currentPrice, currentExchangeRate]);
+  }, [open, investment, currentPrice, currentExchangeRate, editData]);
 
   const isUSD = investment?.currency === 'USD';
-  const heldQty = investment?.quantity ?? 0;
+  // 수정 모드: 현재 보유 수량 + 수정 중인 매도 수량 = 매도 가능 최대 수량
+  const heldQty = (investment?.quantity ?? 0) + (editData?.sellQuantity ?? 0);
   const avgBuyPrice = investment?.avgPrice ?? 0;
 
   // 실시간 실현손익 미리보기
@@ -103,7 +122,7 @@ export default function SellDialog({
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ fontWeight: 700 }}>
-        {investment.name} 매도
+        {investment.name} {isEditMode ? '매도 수정' : '매도'}
       </DialogTitle>
       <DialogContent>
         <Stack spacing={2.5} sx={{ mt: 1 }}>
@@ -221,7 +240,7 @@ export default function SellDialog({
           color="error"
           disabled={!valid || submitting}
         >
-          {submitting ? '처리 중...' : '매도'}
+          {submitting ? '처리 중...' : isEditMode ? '수정' : '매도'}
         </Button>
       </DialogActions>
     </Dialog>
