@@ -348,9 +348,9 @@ export default function AssetHistoryChart({ userId }: AssetHistoryChartProps) {
                       : `${detail.latestDate} 기준`}
                   </Typography>
                   <Stack spacing={0.5}>
-                    {detail.items.map((item) => (
+                    {detail.items.map((item, idx) => (
                       <Stack
-                        key={item.ticker}
+                        key={`${item.ticker}-${idx}`}
                         direction="row"
                         alignItems="center"
                         sx={{

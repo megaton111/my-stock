@@ -23,7 +23,7 @@ export function useStockPrices(investments: Investment[]): StockPricesState {
       return;
     }
 
-    const tickers = investments.map(item => item.ticker).filter(t => !isCash(t));
+    const tickers = [...new Set(investments.map(item => item.ticker).filter(t => !isCash(t)))];
     const symbols = [...tickers, EXCHANGE_RATE_SYMBOL].join(',');
 
     const fetchPrices = async () => {

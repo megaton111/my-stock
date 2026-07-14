@@ -66,7 +66,8 @@ function mergeEntries(
 
     if (totalQty === 0) continue;
 
-    const existing = map.get(ticker);
+    // id 기반 맵이므로 ticker로 값을 검색 (첫 번째 매칭 항목에 병합)
+    const existing = Array.from(map.values()).find((item) => item.ticker === ticker);
     if (existing) {
       // 가중평균 매수가 재계산 (기존 투자의 통화를 그대로 유지)
       const oldCost = existing.avgPrice * existing.quantity;
@@ -79,7 +80,7 @@ function mergeEntries(
       if (!existing.accountName && row.account_name) existing.accountName = String(row.account_name);
       if (!existing.accountNumber && row.account_number) existing.accountNumber = String(row.account_number);
     } else {
-      map.set(ticker, {
+      map.set(`${source}-${ticker}`, {
         id: `${source}-${ticker}`,
         name: String(row.stock_name),
         ticker,
@@ -125,13 +126,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: investResult.error.message }, { status: 500 });
   }
 
-  // 1) investments를 ticker 기준 맵으로 변환
-  //    현금(CASH-*)은 증권사마다 별도 항목이므로 id를 키로 사용
+  // 1) investments를 id 기준 맵으로 변환
+  //    같은 티커라도 계좌가 다르면 별도 항목으로 유지
   const map = new Map<string, MergedItem>();
   for (const row of (investResult.data ?? [])) {
     const item = toInvestment(row);
-    const key = item.ticker.startsWith('CASH-') ? `${item.ticker}-${item.id}` : item.ticker;
-    map.set(key, item);
+    map.set(item.id, item);
   }
 
   // 2) collect_entries 집계 후 병합

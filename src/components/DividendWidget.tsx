@@ -57,7 +57,7 @@ export default function DividendWidget({ investments, exchangeRate }: DividendWi
   useEffect(() => {
     if (investments.length === 0) return;
     let cancelled = false;
-    const tickers = investments.map((i) => i.ticker).join(',');
+    const tickers = [...new Set(investments.map((i) => i.ticker))].join(',');
     fetch(`/api/stock/dividend?symbols=${tickers}`)
       .then((res) => res.json())
       .then((data: DividendResult[]) => {
@@ -219,9 +219,9 @@ export default function DividendWidget({ investments, exchangeRate }: DividendWi
             종목별 배당
           </Typography>
           <Stack spacing={0.75}>
-            {stockRows.map((row) => (
+            {stockRows.map((row, idx) => (
               <Stack
-                key={row.ticker}
+                key={`${row.ticker}-${idx}`}
                 direction="row"
                 alignItems="center"
                 justifyContent="space-between"

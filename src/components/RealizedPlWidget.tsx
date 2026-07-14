@@ -181,9 +181,9 @@ export default function RealizedPlWidget({ userId, sx }: RealizedPlWidgetProps) 
                   </Typography>
                 ) : (
                   <Stack spacing={0.75}>
-                    {modalData.breakdown.map((item) => (
+                    {modalData.breakdown.map((item, idx) => (
                       <Stack
-                        key={item.ticker}
+                        key={`${item.ticker}-${idx}`}
                         direction="row"
                         alignItems="center"
                         justifyContent="space-between"

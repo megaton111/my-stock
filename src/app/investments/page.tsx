@@ -6,6 +6,7 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   TableSortLabel, Chip, Collapse, IconButton,
   Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
+  Backdrop, CircularProgress,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -97,6 +98,7 @@ export default function InvestmentsPage() {
   const [editingSellTx, setEditingSellTx] = useState<SellEditData | null>(null);
   const [deletingSellTx, setDeletingSellTx] = useState<{ id: number; positionId: number; stockName: string } | null>(null);
   const [journalTarget, setJournalTarget] = useState<Investment | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -139,61 +141,81 @@ export default function InvestmentsPage() {
   }, [investments, sortKey, sortDir, exchangeRate]);
 
   const handleAdd = async (data: InvestmentInput) => {
-    const res = await fetch('/api/investments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...data, userId }),
-    });
-    await refetch();
-    // 현금이 아닌 종목 등록 후 매매일지 작성 안내
-    if (res.ok && !data.ticker.startsWith('CASH-')) {
-      const created = await res.json();
-      setJournalTarget({
-        ...data,
-        id: created.id,
-      } as Investment);
+    setSaving(true);
+    try {
+      const res = await fetch('/api/investments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...data, userId }),
+      });
+      await refetch();
+      // 현금이 아닌 종목 등록 후 매매일지 작성 안내
+      if (res.ok && !data.ticker.startsWith('CASH-')) {
+        const created = await res.json();
+        setJournalTarget({
+          ...data,
+          id: created.id,
+        } as Investment);
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleEdit = async (data: InvestmentInput) => {
     if (!editing) return;
-    await fetch(`/api/investments/${editing.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    setEditing(null);
-    refetch();
+    setSaving(true);
+    try {
+      await fetch(`/api/investments/${editing.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      setEditing(null);
+      await refetch();
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = async () => {
     if (!deleting) return;
-    await fetch(`/api/investments/${deleting.id}`, { method: 'DELETE' });
-    setDeleting(null);
-    refetch();
+    setSaving(true);
+    try {
+      await fetch(`/api/investments/${deleting.id}`, { method: 'DELETE' });
+      setDeleting(null);
+      await refetch();
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleBuy = async (data: BuySubmitData) => {
     if (!buying) return;
-    const isEdit = !!editingBuyTx;
-    const url = isEdit
-      ? `/api/buy-transactions/${editingBuyTx!.id}`
-      : `/api/investments/${buying.id}/buy`;
-    const res = await fetch(url, {
-      method: isEdit ? 'PUT' : 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-      const { error } = await res.json().catch(() => ({
-        error: isEdit ? '매수 수정 처리 중 오류가 발생했습니다.' : '추가매수 처리 중 오류가 발생했습니다.',
-      }));
-      throw new Error(error || (isEdit ? '매수 수정 실패' : '추가매수 처리 실패'));
+    setSaving(true);
+    try {
+      const isEdit = !!editingBuyTx;
+      const url = isEdit
+        ? `/api/buy-transactions/${editingBuyTx!.id}`
+        : `/api/investments/${buying.id}/buy`;
+      const res = await fetch(url, {
+        method: isEdit ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({
+          error: isEdit ? '매수 수정 처리 중 오류가 발생했습니다.' : '추가매수 처리 중 오류가 발생했습니다.',
+        }));
+        throw new Error(error || (isEdit ? '매수 수정 실패' : '추가매수 처리 실패'));
+      }
+      setBuying(null);
+      setEditingBuyTx(null);
+      setPositionRefreshKey((k) => k + 1);
+      await refetch();
+    } finally {
+      setSaving(false);
     }
-    setBuying(null);
-    setEditingBuyTx(null);
-    setPositionRefreshKey((k) => k + 1);
-    refetch();
   };
 
   const openEditBuy = (item: Investment, tx: TransactionItem) => {
@@ -209,23 +231,28 @@ export default function InvestmentsPage() {
 
   const handleSell = async (data: SellSubmitData) => {
     if (!selling) return;
-    const isEdit = !!editingSellTx;
-    const url = isEdit
-      ? `/api/sell-transactions/${editingSellTx!.id}`
-      : `/api/investments/${selling.id}/sell`;
-    const res = await fetch(url, {
-      method: isEdit ? 'PUT' : 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-      const { error } = await res.json().catch(() => ({ error: isEdit ? '매도 수정 중 오류가 발생했습니다.' : '매도 처리 중 오류가 발생했습니다.' }));
-      throw new Error(error || (isEdit ? '매도 수정 실패' : '매도 처리 실패'));
+    setSaving(true);
+    try {
+      const isEdit = !!editingSellTx;
+      const url = isEdit
+        ? `/api/sell-transactions/${editingSellTx!.id}`
+        : `/api/investments/${selling.id}/sell`;
+      const res = await fetch(url, {
+        method: isEdit ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({ error: isEdit ? '매도 수정 중 오류가 발생했습니다.' : '매도 처리 중 오류가 발생했습니다.' }));
+        throw new Error(error || (isEdit ? '매도 수정 실패' : '매도 처리 실패'));
+      }
+      setSelling(null);
+      setEditingSellTx(null);
+      setPositionRefreshKey((k) => k + 1);
+      await refetch();
+    } finally {
+      setSaving(false);
     }
-    setSelling(null);
-    setEditingSellTx(null);
-    setPositionRefreshKey((k) => k + 1);
-    refetch();
   };
 
   const openEditSell = (item: Investment, tx: TransactionItem) => {
@@ -241,14 +268,19 @@ export default function InvestmentsPage() {
 
   const handleDeleteSell = async () => {
     if (!deletingSellTx) return;
-    const res = await fetch(`/api/sell-transactions/${deletingSellTx.id}`, { method: 'DELETE' });
-    if (!res.ok) {
-      const { error } = await res.json().catch(() => ({ error: '매도 삭제 중 오류가 발생했습니다.' }));
-      throw new Error(error || '매도 삭제 실패');
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/sell-transactions/${deletingSellTx.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({ error: '매도 삭제 중 오류가 발생했습니다.' }));
+        throw new Error(error || '매도 삭제 실패');
+      }
+      setDeletingSellTx(null);
+      setPositionRefreshKey((k) => k + 1);
+      await refetch();
+    } finally {
+      setSaving(false);
     }
-    setDeletingSellTx(null);
-    setPositionRefreshKey((k) => k + 1);
-    refetch();
   };
 
   const handleJournalClick = (item: Investment) => {
@@ -789,6 +821,10 @@ export default function InvestmentsPage() {
         investment={journalTarget}
         userId={userId}
       />
+
+      <Backdrop open={saving} sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.modal + 1 }}>
+        <CircularProgress color="inherit" />
+      </Backdrop>
     </Container>
   );
 }
