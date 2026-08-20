@@ -6,6 +6,7 @@ import {
   Button,
   Stack,
   Skeleton,
+  Paper,
 } from '@mui/material';
 
 import { useInvestments } from '@/hooks/useInvestments';
@@ -15,6 +16,8 @@ import SummaryCards from '@/components/SummaryCards';
 import InvestmentTable from '@/components/InvestmentTable';
 import AssetHistoryChart from '@/components/AssetHistoryChart';
 import WatchlistWidget from '@/components/WatchlistWidget';
+import FearGreedWidget from '@/components/FearGreedWidget';
+import VixWidget from '@/components/VixWidget';
 import AssetAllocationWidget from '@/components/AssetAllocationWidget';
 import DividendWidget from '@/components/DividendWidget';
 import ProgressWidget from '@/components/ProgressWidget';
@@ -146,6 +149,21 @@ export default function DashboardPage() {
       <IpoListingAlert />
 
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+        {/* 공포·탐욕 지수 + VIX */}
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: 1, alignItems: 'stretch' }}>
+          <Box sx={{ flex: 3, minWidth: 0 }}>
+            <FearGreedWidget />
+          </Box>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <VixWidget />
+          </Box>
+        </Stack>
+        <Paper sx={{ width: 1, px: 2.5, py: 1.5, borderRadius: 1, bgcolor: 'primary.main' }}>
+          <Typography variant="body2" fontWeight={600} sx={{ color: '#fff' }}>
+            공포·탐욕 지수 20 미만 / VIX 30 이상인 경우 매수 관심!
+          </Typography>
+        </Paper>
+
         {/* SummaryCards */}
         {dataLoading ? <SummarySkeleton /> : <SummaryCards {...summary} />}
 

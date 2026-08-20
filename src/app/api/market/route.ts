@@ -23,6 +23,7 @@ const INDICES = [
   { symbol: '^IXIC', name: '나스닥 종합' },
   { symbol: '^GSPC', name: 'S&P 500' },
   { symbol: 'USDKRW=X', name: '달러/원 환율' },
+  { symbol: '^VIX', name: 'VIX' },
 ];
 
 interface YahooChartResponse {

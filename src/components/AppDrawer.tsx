@@ -32,6 +32,7 @@ const MENU_ITEMS: MenuItem[] = [
     ],
   },
   { label: '주식정보', path: '/market' },
+  { label: '메모', path: '/memo' },
 ];
 
 const SIDEBAR_WIDTH = 280;
