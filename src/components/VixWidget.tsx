@@ -47,7 +47,10 @@ export default function VixWidget() {
   const { label: levelLabel, color: levelColor } = getVixLevel(vix.price);
 
   return (
-    <Paper sx={{ p: { xs: 2, sm: 2.5 }, borderRadius: 1, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+    <Paper
+      onClick={() => window.open('https://www.investing.com/indices/volatility-s-p-500', '_blank', 'noopener,noreferrer')}
+      sx={{ p: { xs: 2, sm: 2.5 }, borderRadius: 1, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', cursor: 'pointer', '&:hover': { opacity: 0.85 } }}
+    >
       <Stack spacing={2} height="100%">
         <Typography variant="body2" color="gray5" fontWeight={600}>
           VIX 변동성 지수

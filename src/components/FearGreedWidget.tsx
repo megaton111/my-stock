@@ -60,7 +60,10 @@ export default function FearGreedWidget() {
   const thumbLeft = Math.min(Math.max(data.score, 2), 98);
 
   return (
-    <Paper sx={{ width: 1, p: { xs: 2, sm: 2.5 }, borderRadius: 1 }}>
+    <Paper
+      onClick={() => window.open('https://edition.cnn.com/markets/fear-and-greed', '_blank', 'noopener,noreferrer')}
+      sx={{ width: 1, p: { xs: 2, sm: 2.5 }, borderRadius: 1, cursor: 'pointer', '&:hover': { opacity: 0.85 } }}
+    >
       <Stack spacing={2}>
         <Typography variant="body2" color="gray5" fontWeight={600}>
           공포·탐욕 지수 (Fear & Greed)
